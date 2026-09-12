@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sword, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Sword, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
 
@@ -73,10 +73,6 @@ export default function AuthScreen() {
             <Sword className="w-10 h-10 text-white" strokeWidth={2.2} />
           </motion.div>
           
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold mb-3">
-            <Sparkles className="w-3.5 h-3.5" /> Gamified Habit Quest RPG
-          </div>
-
           <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-ink-200 tracking-tight">
             LifeQuest
           </h1>

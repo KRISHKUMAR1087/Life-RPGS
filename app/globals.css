@@ -1,11 +1,11 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  /* iOS Light Mode (System Gray 6 Background & Pure White Grouped Cards) */
+  /* Light Mode */
   --color-bg-main: #f2f2f7;
   --color-bg-card: #ffffff;
   --color-bg-card-alt: #f8f8fc;
@@ -19,7 +19,7 @@
 }
 
 .dark {
-  /* iOS Dark Mode (True Black System Background & Dark Grouped Surfaces) */
+  /* Dark Mode */
   --color-bg-main: #000000;
   --color-bg-card: #1c1c1e;
   --color-bg-card-alt: #2c2c2e;
@@ -37,15 +37,16 @@
     scroll-behavior: smooth;
   }
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
     background-color: var(--color-bg-main);
     color: var(--color-text-main);
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
   }
   h1, h2, h3, .font-heading {
-    font-family: 'Cinzel', Georgia, serif;
-    letter-spacing: 0.01em;
+    font-family: 'Outfit', 'Plus Jakarta Sans', system-ui, sans-serif;
+    letter-spacing: -0.02em;
+    font-weight: 700;
   }
   *:focus-visible {
     outline: 2px solid #007aff;
@@ -67,7 +68,7 @@
 }
 
 @layer components {
-  /* iOS Grouped Inset Card */
+  /* Grouped Inset Card */
   .rpg-card {
     background: var(--color-bg-card);
     border: 1px solid var(--color-border);
@@ -88,7 +89,7 @@
     box-shadow: 0 8px 24px rgba(0, 122, 255, 0.12);
   }
 
-  /* iOS Frosted Glass Panel */
+  /* Frosted Glass Panel */
   .ios-glass {
     background: rgba(255, 255, 255, 0.75);
     backdrop-filter: blur(30px) saturate(190%);
@@ -102,7 +103,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
   }
 
-  /* iOS Primary Button */
+  /* Primary Button */
   .btn-primary {
     background: #007aff;
     color: #ffffff;
@@ -121,7 +122,7 @@
     transform: scale(0.98);
   }
 
-  /* iOS Secondary Ghost Button */
+  /* Secondary Ghost Button */
   .btn-ghost {
     background: var(--color-bg-card-alt);
     border: 1px solid var(--color-border);
@@ -135,7 +136,7 @@
     color: #007aff;
   }
 
-  /* iOS Input Field */
+  /* Input Field */
   .input-field {
     background: var(--color-bg-card-alt);
     border: 1px solid var(--color-border);

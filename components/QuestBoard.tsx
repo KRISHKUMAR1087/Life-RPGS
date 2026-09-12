@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, useMemo, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
@@ -9,12 +9,10 @@ import {
   X,
   Loader2,
   Swords,
-  Brain,
-  Heart,
-  Users,
-  Zap,
-  CircleDot,
-  Lock,
+  Search,
+  SlidersHorizontal,
+  ArrowUpDown,
+  Sparkles,
 } from 'lucide-react';
 import type { Quest } from '@/lib/supabase';
 import {
@@ -22,6 +20,7 @@ import {
   DIFFICULTIES,
   getCategory,
   getDifficulty,
+  type CategoryConfig,
   type CategoryKey,
   type DifficultyKey,
 } from '@/lib/rpg';
@@ -29,6 +28,8 @@ import {
 type QuestBoardProps = {
   quests: Quest[];
   loading: boolean;
+  customCategories?: CategoryConfig[];
+  initialCategoryFilter?: string | null;
   onAdd: (data: {
     title: string;
     description: string;
@@ -40,17 +41,11 @@ type QuestBoardProps = {
   completingId: string | null;
 };
 
-const ICON_MAP: Record<string, typeof Swords> = {
-  strength: Swords,
-  intellect: Brain,
-  vitality: Heart,
-  charisma: Users,
-  dexterity: Zap,
-};
-
 export default function QuestBoard({
   quests,
   loading,
+  customCategories = [],
+  initialCategoryFilter = null,
   onAdd,
   onComplete,
   onDelete,
@@ -64,8 +59,58 @@ export default function QuestBoard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const activeQuests = quests.filter((q) => q.status === 'active');
-  const completedQuests = quests.filter((q) => q.status === 'completed');
+  // Filter & Sort State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'completed' | 'all'>('active');
+  const [categoryFilter, setCategoryFilter] = useState<string>(initialCategoryFilter || 'all');
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'xp_desc' | 'xp_asc' | 'title_asc'>('newest');
+
+  const allCategories = useMemo(() => [...CATEGORIES, ...customCategories], [customCategories]);
+
+  // Combined Filtering & Sorting
+  const filteredAndSortedQuests = useMemo(() => {
+    return quests
+      .filter((q) => {
+        // Status filter
+        if (statusFilter === 'active' && q.status !== 'active') return false;
+        if (statusFilter === 'completed' && q.status !== 'completed') return false;
+
+        // Category filter
+        if (categoryFilter !== 'all' && q.category !== categoryFilter) return false;
+
+        // Difficulty filter
+        if (difficultyFilter !== 'all' && q.difficulty !== difficultyFilter) return false;
+
+        // Search query
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          const matchesTitle = q.title.toLowerCase().includes(query);
+          const matchesDesc = (q.description || '').toLowerCase().includes(query);
+          if (!matchesTitle && !matchesDesc) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortOrder === 'newest') {
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        }
+        if (sortOrder === 'oldest') {
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }
+        if (sortOrder === 'xp_desc') {
+          return getDifficulty(b.difficulty).xp - getDifficulty(a.difficulty).xp;
+        }
+        if (sortOrder === 'xp_asc') {
+          return getDifficulty(a.difficulty).xp - getDifficulty(b.difficulty).xp;
+        }
+        if (sortOrder === 'title_asc') {
+          return a.title.localeCompare(b.title);
+        }
+        return 0;
+      });
+  }, [quests, statusFilter, categoryFilter, difficultyFilter, searchQuery, sortOrder]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -96,316 +141,391 @@ export default function QuestBoard({
     }
   }
 
+  const activeCount = quests.filter((q) => q.status === 'active').length;
+  const completedCount = quests.filter((q) => q.status === 'completed').length;
+
   return (
-    <div className="space-y-4">
-      {/* iOS Header */}
-      <div className="flex items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* Top Header & Accept Quest Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rpg-card p-5 border border-ink-800 bg-ink-900">
         <div>
-          <h2 className="font-heading text-xl font-bold text-ink-200">Quest Board</h2>
-          <p className="text-xs text-ink-400 mt-0.5 font-medium">
-            {activeQuests.length} active · {completedQuests.length} completed
+          <h2 className="font-heading text-lg font-bold text-ink-200 flex items-center gap-2">
+            <Swords className="w-5 h-5 text-gold-400" /> Quest Board
+          </h2>
+          <p className="text-xs text-ink-400 mt-0.5">
+            Complete active challenges to gain XP, Gold, and level up your character stats.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => setShowForm((s) => !s)}
-          className="btn-primary flex items-center gap-1.5 text-sm font-semibold rounded-2xl shadow-ios-sm"
-          aria-expanded={showForm}
-          aria-controls="quest-form"
+          onClick={() => setShowForm((prev) => !prev)}
+          className="btn-primary flex items-center justify-center gap-2 text-sm font-semibold rounded-2xl shadow-ios-sm shrink-0"
         >
           {showForm ? (
             <>
-              <X className="w-4 h-4" />
-              Cancel
+              <X className="w-4 h-4" /> Cancel
             </>
           ) : (
             <>
-              <Plus className="w-4 h-4" />
-              New Quest
+              <Plus className="w-4 h-4" /> Accept New Quest
             </>
           )}
         </button>
       </div>
 
-      {/* iOS Form Card */}
+      {/* Add Quest Form Modal / Accordion */}
       <AnimatePresence>
         {showForm && (
           <motion.div
-            id="quest-form"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <form onSubmit={handleSubmit} className="rpg-card p-5 sm:p-6 space-y-4 shadow-ios-md" noValidate>
+            <form onSubmit={handleSubmit} className="rpg-card p-5 sm:p-6 space-y-4 shadow-ios-md border border-gold-500/40" noValidate>
+              <h3 className="font-heading text-base font-bold text-ink-200">Construct Quest Parameters</h3>
+
+              {error && (
+                <div className="p-3 rounded-xl bg-flame-500/10 border border-flame-500/30 text-flame-400 text-xs font-medium">
+                  {error}
+                </div>
+              )}
+
               <div>
-                <label htmlFor="quest-title" className="block text-xs font-semibold text-ink-300 mb-1.5 ml-1">
-                  Quest Title
+                <label className="block text-xs font-semibold text-ink-300 mb-1">
+                  Quest Objective <span className="text-flame-400">*</span>
                 </label>
                 <input
-                  id="quest-title"
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="input-field text-sm font-medium"
-                  placeholder="e.g. Complete 50 push-ups"
-                  maxLength={100}
-                  disabled={submitting}
-                  autoFocus
+                  placeholder="e.g. Complete 30 min cardio workout, Read 20 pages of technical docs"
+                  className="input-field text-sm"
+                  required
                 />
               </div>
 
               <div>
-                <label htmlFor="quest-desc" className="block text-xs font-semibold text-ink-300 mb-1.5 ml-1">
-                  Description <span className="text-ink-500 font-normal">(optional)</span>
+                <label className="block text-xs font-semibold text-ink-300 mb-1">
+                  Description <span className="text-ink-500 font-normal">(optional details)</span>
                 </label>
-                <input
-                  id="quest-desc"
-                  type="text"
+                <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="input-field text-sm font-medium"
-                  placeholder="Add details about your quest..."
-                  maxLength={200}
-                  disabled={submitting}
+                  placeholder="Additional sub-tasks, notes, or execution constraints..."
+                  rows={2}
+                  className="input-field text-sm resize-none"
                 />
               </div>
 
-              {/* iOS Segmented Category Selector */}
-              <div>
-                <span id="category-label" className="block text-xs font-semibold text-ink-300 mb-1.5 ml-1">
-                  Category
-                </span>
-                <div role="radiogroup" aria-labelledby="category-label" className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                  {CATEGORIES.map((cat) => {
-                    const Icon = cat.icon;
-                    const selected = category === cat.key;
-                    return (
-                      <button
-                        key={cat.key}
-                        type="button"
-                        onClick={() => setCategory(cat.key)}
-                        className={`flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all ${
-                          selected
-                            ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 shadow-ios-sm'
-                            : 'bg-ink-850 border-ink-800 text-ink-400 hover:border-ink-700'
-                        }`}
-                        role="radio"
-                        aria-checked={selected}
-                        aria-label={`Category: ${cat.label}`}
-                      >
-                        <Icon className="w-5 h-5" style={{ color: selected ? cat.color : '#8e8e93' }} />
-                        <span className="text-xs font-semibold">{cat.label}</span>
-                      </button>
-                    );
-                  })}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Category selector */}
+                <div>
+                  <label className="block text-xs font-semibold text-ink-300 mb-1">Target Category</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as CategoryKey)}
+                    className="input-field text-sm bg-ink-850"
+                  >
+                    {allCategories.map((cat) => (
+                      <option key={cat.key} value={cat.key}>
+                        {cat.label} {cat.isCustom ? '(Custom)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Difficulty selector */}
+                <div>
+                  <label className="block text-xs font-semibold text-ink-300 mb-1">Challenge Tier</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {DIFFICULTIES.map((diff) => {
+                      const isSelected = difficulty === diff.key;
+                      return (
+                        <button
+                          key={diff.key}
+                          type="button"
+                          onClick={() => setDifficulty(diff.key)}
+                          className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
+                            isSelected
+                              ? `${diff.border} bg-ink-800 ${diff.color}`
+                              : 'border-ink-800 bg-ink-850/50 text-ink-400 hover:border-ink-700'
+                          }`}
+                        >
+                          <span>{diff.label}</span>
+                          <span className="text-[10px] text-ink-500">+{diff.xp}XP</span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
-              {/* iOS Segmented Difficulty Selector */}
-              <div>
-                <span id="difficulty-label" className="block text-xs font-semibold text-ink-300 mb-1.5 ml-1">
-                  Difficulty
-                </span>
-                <div role="radiogroup" aria-labelledby="difficulty-label" className="grid grid-cols-4 gap-2">
-                  {DIFFICULTIES.map((diff) => {
-                    const selected = difficulty === diff.key;
-                    return (
-                      <button
-                        key={diff.key}
-                        type="button"
-                        onClick={() => setDifficulty(diff.key)}
-                        className={`flex flex-col items-center gap-1 p-2.5 rounded-2xl border transition-all ${
-                          selected
-                            ? 'bg-ink-800 border-amber-500/50 shadow-ios-sm'
-                            : 'bg-ink-850 border-ink-800 hover:border-ink-700'
-                        }`}
-                        role="radio"
-                        aria-checked={selected}
-                        aria-label={`Difficulty: ${diff.label}`}
-                      >
-                        <CircleDot className="w-4 h-4" style={{ opacity: selected ? 1 : 0.4 }} />
-                        <span className={`text-xs font-semibold ${selected ? diff.color : 'text-ink-400'}`}>
-                          {diff.label}
-                        </span>
-                        <span className="text-[10px] text-ink-500 font-medium">
-                          +{diff.xp} XP · +{diff.gold}g
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="btn-ghost text-xs"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn-primary text-xs flex items-center gap-1.5"
+                >
+                  {submitting ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Binding...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" /> Accept Quest
+                    </>
+                  )}
+                </button>
               </div>
-
-              {error && (
-                <p className="text-xs font-medium text-flame-500 bg-flame-500/10 border border-flame-500/20 rounded-xl p-3">
-                  {error}
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="btn-primary w-full py-2.5 text-sm font-semibold rounded-2xl flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Creating Quest...
-                  </>
-                ) : (
-                  'Accept Quest'
-                )}
-              </button>
             </form>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Loading Skeleton */}
-      {loading && (
+      {/* Filter Controls & Search Bar */}
+      <div className="rpg-card p-4 space-y-3 bg-ink-900 border border-ink-800">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1 bg-ink-850 p-1 rounded-xl border border-ink-800">
+            <button
+              type="button"
+              onClick={() => setStatusFilter('active')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === 'active'
+                  ? 'bg-ink-800 text-ink-200 shadow-sm'
+                  : 'text-ink-400 hover:text-ink-200'
+              }`}
+            >
+              Active ({activeCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('completed')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === 'completed'
+                  ? 'bg-ink-800 text-emerald2-400 shadow-sm'
+                  : 'text-ink-400 hover:text-ink-200'
+              }`}
+            >
+              Completed ({completedCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setStatusFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === 'all'
+                  ? 'bg-ink-800 text-ink-200 shadow-sm'
+                  : 'text-ink-400 hover:text-ink-200'
+              }`}
+            >
+              All ({quests.length})
+            </button>
+          </div>
+
+          {/* Live Search Input */}
+          <div className="relative flex-1 max-w-xs">
+            <Search className="w-4 h-4 text-ink-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search quests..."
+              className="input-field text-xs pl-9 py-1.5"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-200"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Dropdown Filters & Sorting Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-ink-800/60 text-xs">
+          {/* Category Pill Filters */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setCategoryFilter('all')}
+              className={`px-2.5 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-all ${
+                categoryFilter === 'all'
+                  ? 'bg-gold-500/10 border-gold-500/40 text-gold-400'
+                  : 'bg-ink-850 border-ink-800 text-ink-400 hover:border-ink-700'
+              }`}
+            >
+              All Categories
+            </button>
+            {allCategories.map((cat) => {
+              const isSelected = categoryFilter === cat.key;
+              const Icon = cat.icon;
+              return (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => setCategoryFilter(cat.key)}
+                  className={`px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all ${
+                    isSelected
+                      ? `${cat.bgColor} ${cat.borderColor} ${cat.textColor}`
+                      : 'bg-ink-850 border-ink-800 text-ink-400 hover:border-ink-700'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {cat.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Difficulty & Sort Selectors */}
+          <div className="flex items-center gap-2 ml-auto">
+            <div className="flex items-center gap-1">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-ink-400" />
+              <select
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+                className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
+              >
+                <option value="all">All Tiers</option>
+                {DIFFICULTIES.map((d) => (
+                  <option key={d.key} value={d.key}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <ArrowUpDown className="w-3.5 h-3.5 text-ink-400" />
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+                className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="xp_desc">XP (High to Low)</option>
+                <option value="xp_asc">XP (Low to High)</option>
+                <option value="title_asc">Title (A-Z)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Quests List */}
+      {loading ? (
         <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="rpg-card p-4 loading-skeleton h-20 rounded-2xl" />
+          {[1, 2, 3].map((n) => (
+            <div key={n} className="rpg-card p-4 h-20 loading-skeleton rounded-2xl" />
           ))}
         </div>
-      )}
-
-      {/* Active Quests */}
-      {!loading && activeQuests.length > 0 && (
+      ) : filteredAndSortedQuests.length === 0 ? (
+        <div className="rpg-card p-8 text-center border border-ink-800 bg-ink-900 space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-ink-850 border border-ink-800 flex items-center justify-center mx-auto text-ink-400">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-semibold text-ink-300">No quests match your current filter parameters.</p>
+          <p className="text-xs text-ink-500">
+            Try adjusting your search query, status tab, or category filter above.
+          </p>
+        </div>
+      ) : (
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-ink-400 uppercase tracking-wider ml-1">
-            Active Quests
-          </h3>
-          <AnimatePresence>
-            {activeQuests.map((quest) => {
-              const cat = getCategory(quest.category);
-              const diff = getDifficulty(quest.difficulty);
-              const Icon = ICON_MAP[quest.category] ?? CircleDot;
+          <AnimatePresence mode="popLayout">
+            {filteredAndSortedQuests.map((quest) => {
+              const catConfig = getCategory(quest.category, customCategories);
+              const diffConfig = getDifficulty(quest.difficulty);
+              const isCompleted = quest.status === 'completed';
               const isCompleting = completingId === quest.id;
+              const IconComp = catConfig.icon;
+
               return (
                 <motion.div
                   key={quest.id}
                   layout
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, x: -50, scale: 0.95 }}
-                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-                  className="rpg-card rpg-card-hover p-4 rounded-2xl relative overflow-hidden group border border-ink-800"
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className={`rpg-card p-4 sm:p-5 border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group ${
+                    isCompleted
+                      ? 'border-ink-800/60 bg-ink-900/40 opacity-70'
+                      : 'border-ink-800 bg-ink-900 hover:border-ink-700'
+                  }`}
                 >
-                  <div className="relative flex items-start gap-3.5">
+                  <div className="flex items-start gap-3.5 min-w-0">
                     <div
-                      className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 bg-ink-850 border border-ink-800 shadow-ios-sm"
+                      className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${catConfig.bgColor} border ${catConfig.borderColor}`}
                     >
-                      <Icon className="w-5 h-5" style={{ color: cat.color }} />
+                      <IconComp className={`w-5 h-5 ${catConfig.textColor}`} />
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-ink-200 text-sm sm:text-base truncate">{quest.title}</p>
-                          {quest.description && (
-                            <p className="text-xs text-ink-400 mt-0.5 line-clamp-2">{quest.description}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => onComplete(quest)}
-                            disabled={isCompleting}
-                            className="w-9 h-9 rounded-xl bg-ios-green/10 border border-ios-green/30 text-ios-green flex items-center justify-center hover:bg-ios-green/20 transition-all disabled:opacity-50"
-                            aria-label={`Complete quest: ${quest.title}`}
-                            title="Complete quest"
-                          >
-                            {isCompleting ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDelete(quest.id)}
-                            className="w-9 h-9 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 flex items-center justify-center hover:bg-ios-red/10 hover:text-ios-red hover:border-ios-red/30 transition-all opacity-0 group-hover:opacity-100"
-                            aria-label={`Delete quest: ${quest.title}`}
-                            title="Abandon quest"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className={`text-sm font-bold truncate ${isCompleted ? 'line-through text-ink-400' : 'text-ink-200'}`}>
+                          {quest.title}
+                        </h3>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold ${diffConfig.badge}`}>
+                          {diffConfig.label} (+{diffConfig.xp} XP)
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold ${catConfig.bgColor} ${catConfig.borderColor} ${catConfig.textColor}`}>
+                          {catConfig.label}
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-2 mt-2.5">
-                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-ink-850 border border-ink-800 text-ink-300 font-semibold">
-                          {cat.label}
-                        </span>
-                        <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-500 font-semibold">
-                          {diff.label}
-                        </span>
-                        <span className="text-[11px] text-ink-500 ml-auto font-medium">
-                          +{diff.xp} XP · +{diff.gold} gold
-                        </span>
-                      </div>
+                      {quest.description && (
+                        <p className="text-xs text-ink-400 line-clamp-2">{quest.description}</p>
+                      )}
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                    {!isCompleted ? (
+                      <button
+                        type="button"
+                        onClick={() => onComplete(quest)}
+                        disabled={isCompleting}
+                        className="px-3 py-1.5 rounded-xl bg-emerald2-500/10 border border-emerald2-500/30 text-emerald2-500 text-xs font-semibold flex items-center gap-1.5 hover:bg-emerald2-500/20 transition-all disabled:opacity-50"
+                        title="Complete Quest"
+                      >
+                        {isCompleting ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                        Complete
+                      </button>
+                    ) : (
+                      <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
+                        <Check className="w-3.5 h-3.5" /> Completed
+                      </span>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => onDelete(quest.id)}
+                      className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30 transition-all"
+                      title="Abandon quest"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </motion.div>
               );
             })}
           </AnimatePresence>
-        </div>
-      )}
-
-      {/* Completed Quests */}
-      {!loading && completedQuests.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-ink-400 uppercase tracking-wider ml-1">
-            Completed ({completedQuests.length})
-          </h3>
-          <div className="space-y-2">
-            {completedQuests.slice(0, 10).map((quest) => {
-              const cat = getCategory(quest.category);
-              const Icon = ICON_MAP[quest.category] ?? CircleDot;
-              return (
-                <div
-                  key={quest.id}
-                  className="rpg-card p-3 rounded-2xl flex items-center gap-3 opacity-60 border border-ink-800"
-                >
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 bg-ink-850 border border-ink-800">
-                    <Icon className="w-4 h-4" style={{ color: cat.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm text-ink-300 line-through truncate font-medium">{quest.title}</p>
-                    <p className="text-[10px] text-ink-500">
-                      {cat.label} · {getDifficulty(quest.difficulty).label}
-                    </p>
-                  </div>
-                  <Lock className="w-3.5 h-3.5 text-ink-500 flex-shrink-0" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!loading && quests.length === 0 && !showForm && (
-        <div className="rpg-card p-10 sm:p-12 text-center rounded-3xl border border-ink-800">
-          <div className="w-16 h-16 rounded-3xl bg-ink-850 border border-ink-800 flex items-center justify-center mx-auto mb-4 shadow-ios-sm">
-            <Swords className="w-8 h-8 text-ink-400" />
-          </div>
-          <h3 className="font-heading text-lg font-bold text-ink-200 mb-1">No Active Quests</h3>
-          <p className="text-xs sm:text-sm text-ink-400 mb-5 max-w-xs mx-auto">
-            Your journey starts with a single goal. Create your first real-world task.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowForm(true)}
-            className="btn-primary inline-flex items-center gap-1.5 text-sm font-semibold rounded-2xl shadow-ios-md"
-          >
-            <Plus className="w-4 h-4" />
-            Create Your First Quest
-          </button>
         </div>
       )}
     </div>

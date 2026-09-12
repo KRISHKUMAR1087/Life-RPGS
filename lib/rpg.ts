@@ -4,6 +4,12 @@ import {
   Heart,
   Users,
   Zap,
+  Sparkles,
+  BookOpen,
+  Target,
+  Briefcase,
+  Smile,
+  Compass,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -12,12 +18,13 @@ export type CategoryKey =
   | 'intellect'
   | 'vitality'
   | 'charisma'
-  | 'dexterity';
+  | 'dexterity'
+  | string;
 
 export type DifficultyKey = 'easy' | 'medium' | 'hard' | 'epic';
 
 export type CategoryConfig = {
-  key: CategoryKey;
+  key: string;
   label: string;
   description: string;
   icon: LucideIcon;
@@ -26,6 +33,7 @@ export type CategoryConfig = {
   borderColor: string;
   bgColor: string;
   gradient: string;
+  isCustom?: boolean;
 };
 
 export type DifficultyConfig = {
@@ -96,6 +104,20 @@ export const CATEGORIES: CategoryConfig[] = [
   },
 ];
 
+export const CUSTOM_CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Sparkles,
+  BookOpen,
+  Target,
+  Briefcase,
+  Smile,
+  Compass,
+  Dumbbell,
+  Brain,
+  Heart,
+  Users,
+  Zap,
+};
+
 export const DIFFICULTIES: DifficultyConfig[] = [
   {
     key: 'easy',
@@ -135,8 +157,66 @@ export const DIFFICULTIES: DifficultyConfig[] = [
   },
 ];
 
-export function getCategory(key: string): CategoryConfig {
-  return CATEGORIES.find((c) => c.key === key) ?? CATEGORIES[0];
+export function getCategory(key: string, customCategories: CategoryConfig[] = []): CategoryConfig {
+  const foundBuiltIn = CATEGORIES.find((c) => c.key === key);
+  if (foundBuiltIn) return foundBuiltIn;
+
+  const foundCustom = customCategories.find((c) => c.key === key);
+  if (foundCustom) return foundCustom;
+
+  // Fallback for custom or unknown category
+  return {
+    key,
+    label: key.charAt(0).toUpperCase() + key.slice(1),
+    description: 'Custom quest category',
+    icon: Sparkles,
+    color: '#fbbf24',
+    textColor: 'text-gold-400',
+    borderColor: 'border-gold-500/40',
+    bgColor: 'bg-gold-500/10',
+    gradient: 'from-gold-500/20 to-transparent',
+    isCustom: true,
+  };
+}
+
+export function loadCustomCategories(userId: string): CategoryConfig[] {
+  if (typeof window === 'undefined' || !userId) return [];
+  try {
+    const raw = localStorage.getItem(`life_rpg_custom_categories_${userId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Array<Omit<CategoryConfig, 'icon'> & { iconName?: string }>;
+    return parsed.map((item) => ({
+      ...item,
+      icon: CUSTOM_CATEGORY_ICONS[item.iconName ?? 'Sparkles'] ?? Sparkles,
+      isCustom: true,
+    }));
+  } catch (err) {
+    console.error('Failed to load custom categories', err);
+    return [];
+  }
+}
+
+export function saveCustomCategories(userId: string, categories: CategoryConfig[]): void {
+  if (typeof window === 'undefined' || !userId) return;
+  try {
+    const serialized = categories.map((c) => ({
+      key: c.key,
+      label: c.label,
+      description: c.description,
+      color: c.color,
+      textColor: c.textColor,
+      borderColor: c.borderColor,
+      bgColor: c.bgColor,
+      gradient: c.gradient,
+      iconName: Object.keys(CUSTOM_CATEGORY_ICONS).find(
+        (k) => CUSTOM_CATEGORY_ICONS[k] === c.icon
+      ) ?? 'Sparkles',
+      isCustom: true,
+    }));
+    localStorage.setItem(`life_rpg_custom_categories_${userId}`, JSON.stringify(serialized));
+  } catch (err) {
+    console.error('Failed to save custom categories', err);
+  }
 }
 
 export function getDifficulty(key: string): DifficultyConfig {
