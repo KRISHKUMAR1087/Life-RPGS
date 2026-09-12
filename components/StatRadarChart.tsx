@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CATEGORIES } from '@/lib/rpg';
+import { CATEGORY_COLORS } from '@/lib/rpg';
 
 type StatRadarChartProps = {
   stats: {
@@ -15,17 +15,37 @@ type StatRadarChartProps = {
   size?: number;
 };
 
-export default function StatRadarChart({ stats, size = 280 }: StatRadarChartProps) {
-  const center = size / 2;
-  const radius = (size / 2) * 0.72;
+export default function StatRadarChart({ stats, size = 240 }: StatRadarChartProps) {
+  const [chartSize, setChartSize] = useState(size);
+
+  useEffect(() => {
+    function updateSize() {
+      if (typeof window !== 'undefined') {
+        const screenWidth = window.innerWidth;
+        if (screenWidth < 360) {
+          setChartSize(Math.min(size, 200));
+        } else if (screenWidth < 400) {
+          setChartSize(Math.min(size, 220));
+        } else {
+          setChartSize(size);
+        }
+      }
+    }
+    updateSize();
+    window.addEventListener('resize', updateSize);
+    return () => window.removeEventListener('resize', updateSize);
+  }, [size]);
+
+  const center = chartSize / 2;
+  const radius = (chartSize / 2) * 0.72;
 
   const statEntries = useMemo(
     () => [
-      { key: 'strength', label: 'STR', full: 'Strength', val: stats.strength, color: '#f43f5e' },
-      { key: 'intellect', label: 'INT', full: 'Intellect', val: stats.intellect, color: '#60a5fa' },
-      { key: 'vitality', label: 'VIT', full: 'Vitality', val: stats.vitality, color: '#34d399' },
-      { key: 'charisma', label: 'CHA', full: 'Charisma', val: stats.charisma, color: '#fbbf24' },
-      { key: 'dexterity', label: 'DEX', full: 'Dexterity', val: stats.dexterity, color: '#a78bfa' },
+      { key: 'strength', label: 'STR', full: 'Strength', val: stats.strength, color: CATEGORY_COLORS.strength },
+      { key: 'intellect', label: 'INT', full: 'Intellect', val: stats.intellect, color: CATEGORY_COLORS.intellect },
+      { key: 'vitality', label: 'VIT', full: 'Vitality', val: stats.vitality, color: CATEGORY_COLORS.vitality },
+      { key: 'charisma', label: 'CHA', full: 'Charisma', val: stats.charisma, color: CATEGORY_COLORS.charisma },
+      { key: 'dexterity', label: 'DEX', full: 'Dexterity', val: stats.dexterity, color: CATEGORY_COLORS.dexterity },
     ],
     [stats]
   );
@@ -58,7 +78,7 @@ export default function StatRadarChart({ stats, size = 280 }: StatRadarChartProp
 
   return (
     <div className="relative flex flex-col items-center justify-center p-2">
-      <svg width={size} height={size} className="overflow-visible select-none">
+      <svg width={chartSize} height={chartSize} className="overflow-visible select-none">
         <defs>
           <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.35" />

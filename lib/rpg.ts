@@ -46,13 +46,21 @@ export type DifficultyConfig = {
   badge: string;
 };
 
+export const CATEGORY_COLORS: Record<string, string> = {
+  strength: '#f43f5e',
+  intellect: '#60a5fa',
+  vitality: '#34d399',
+  charisma: '#fbbf24',
+  dexterity: '#a78bfa',
+};
+
 export const CATEGORIES: CategoryConfig[] = [
   {
     key: 'strength',
     label: 'Strength',
     description: 'Physical training, gym, sports',
     icon: Dumbbell,
-    color: '#f43f5e',
+    color: CATEGORY_COLORS.strength,
     textColor: 'text-flame-400',
     borderColor: 'border-flame-500/40',
     bgColor: 'bg-flame-500/10',
@@ -63,7 +71,7 @@ export const CATEGORIES: CategoryConfig[] = [
     label: 'Intellect',
     description: 'Study, reading, coding, learning',
     icon: Brain,
-    color: '#60a5fa',
+    color: CATEGORY_COLORS.intellect,
     textColor: 'text-azure-400',
     borderColor: 'border-azure-500/40',
     bgColor: 'bg-azure-500/10',
@@ -74,7 +82,7 @@ export const CATEGORIES: CategoryConfig[] = [
     label: 'Vitality',
     description: 'Sleep, nutrition, self-care, meditation',
     icon: Heart,
-    color: '#34d399',
+    color: CATEGORY_COLORS.vitality,
     textColor: 'text-emerald2-400',
     borderColor: 'border-emerald2-500/40',
     bgColor: 'bg-emerald2-500/10',
@@ -85,7 +93,7 @@ export const CATEGORIES: CategoryConfig[] = [
     label: 'Charisma',
     description: 'Social skills, networking, relationships',
     icon: Users,
-    color: '#fbbf24',
+    color: CATEGORY_COLORS.charisma,
     textColor: 'text-gold-400',
     borderColor: 'border-gold-500/40',
     bgColor: 'bg-gold-500/10',
@@ -96,7 +104,7 @@ export const CATEGORIES: CategoryConfig[] = [
     label: 'Dexterity',
     description: 'Crafts, art, music, agility',
     icon: Zap,
-    color: '#a78bfa',
+    color: CATEGORY_COLORS.dexterity,
     textColor: 'text-violet2-400',
     borderColor: 'border-violet2-500/40',
     bgColor: 'bg-violet2-500/10',

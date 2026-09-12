@@ -53,6 +53,11 @@
     outline-offset: 2px;
     border-radius: 8px;
   }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -196,5 +201,14 @@
 
 .animate-glow-pulse {
   animation: pulse-glow 2.5s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 

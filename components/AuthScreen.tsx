@@ -97,7 +97,7 @@ export default function AuthScreen() {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 z-10 ${
                 mode === 'signup'
-                  ? 'bg-white dark:bg-zinc-800 text-ink-200 shadow-ios-sm'
+                  ? 'bg-white dark:bg-ink-800 text-ink-200 shadow-ios-sm'
                   : 'text-ink-400 hover:text-ink-200'
               }`}
             >
@@ -111,7 +111,7 @@ export default function AuthScreen() {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 z-10 ${
                 mode === 'login'
-                  ? 'bg-white dark:bg-zinc-800 text-ink-200 shadow-ios-sm'
+                  ? 'bg-white dark:bg-ink-800 text-ink-200 shadow-ios-sm'
                   : 'text-ink-400 hover:text-ink-200'
               }`}
             >

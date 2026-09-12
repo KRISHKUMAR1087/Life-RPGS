@@ -12,12 +12,14 @@ import {
   Layers,
   User,
   ShoppingBag,
+  Plus,
   Flame,
   History,
   Volume2,
   VolumeX,
   Sparkles,
   Zap,
+  TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -51,6 +53,7 @@ import CharacterPanel from '@/components/CharacterPanel';
 import QuestBoard from '@/components/QuestBoard';
 import Shop from '@/components/Shop';
 import CategoryManager from '@/components/CategoryManager';
+import ProgressPage from '@/components/ProgressPage';
 import LevelUpOverlay from '@/components/LevelUpOverlay';
 import FloatingRewards, { type FloatingReward } from '@/components/FloatingRewards';
 import BossBattle from '@/components/BossBattle';
@@ -58,7 +61,7 @@ import ActivityTimeline from '@/components/ActivityTimeline';
 import ThemeToggle from '@/components/ThemeToggle';
 import OfflineBanner, { useOnlineStatus } from '@/components/OfflineBanner';
 
-type TabType = 'dashboard' | 'quests' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
+type TabType = 'dashboard' | 'quests' | 'progress' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
 
 export default function Dashboard() {
   const { profile, user, isDemo, signOut, refreshProfile } = useAuth();
@@ -103,6 +106,9 @@ export default function Dashboard() {
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    if (type === 'error') {
+      soundManager.playErrorSound();
+    }
     setToast({ message, type });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 3000);
@@ -111,6 +117,17 @@ export default function Dashboard() {
   useEffect(() => {
     setIsMuted(soundManager.isMuted());
   }, []);
+
+  // Handle Escape key to close mobile menu drawer
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && mobileMenuOpen) {
+        setMobileMenuOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [mobileMenuOpen]);
 
   function toggleAudio() {
     const nextMuted = soundManager.toggleMute();
@@ -532,13 +549,14 @@ export default function Dashboard() {
   }
 
   const NAV_ITEMS: Array<{ id: TabType; label: string; icon: typeof LayoutDashboard }> = [
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'quests', label: 'Quest Board', icon: Target },
-    { id: 'boss', label: 'Realm Raid', icon: Flame },
-    { id: 'chronicles', label: 'Chronicles', icon: History },
-    { id: 'shop', label: 'Merchant Armory', icon: ShoppingBag },
-    { id: 'character', label: 'Hero Sheet', icon: User },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'quests', label: 'Quests', icon: Target },
+    { id: 'progress', label: 'Progress', icon: TrendingUp },
     { id: 'categories', label: 'Categories', icon: Layers },
+    { id: 'boss', label: 'Boss Raid', icon: Flame },
+    { id: 'chronicles', label: 'Activity', icon: History },
+    { id: 'shop', label: 'Shop', icon: ShoppingBag },
+    { id: 'character', label: 'Character', icon: User },
   ];
 
   return (
@@ -550,35 +568,30 @@ export default function Dashboard() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between">
+      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
           {/* Logo Brand */}
           <div
-            className="flex items-center gap-3 cursor-pointer select-none"
+            className="flex items-center gap-2.5 cursor-pointer select-none"
             onClick={() => setActiveTab('dashboard')}
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-ios-sm">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm shrink-0">
               <Swords className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-heading text-base font-extrabold text-ink-200 leading-none tracking-tight">
-                  LifeQuest
-                </h1>
-                {isDemoMode && (
-                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">
-                    LOCAL HERO
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-ink-400 mt-0.5 hidden sm:block font-medium">
-                Gamified RPG Productivity System
-              </p>
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-heading text-lg font-extrabold text-ink-200 leading-none tracking-tight">
+                LifeQuest
+              </h1>
+              {isDemoMode && (
+                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
+                  LOCAL
+                </span>
+              )}
             </div>
           </div>
 
           {/* Desktop Navigation Menu Bar */}
-          <nav className="hidden lg:flex items-center gap-1 bg-ink-900/80 border border-ink-800/80 p-1 rounded-2xl shadow-inner">
+          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1 bg-ink-900/90 dark:bg-ink-900/80 border border-ink-800 p-1 rounded-2xl shadow-inner">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -590,10 +603,11 @@ export default function Dashboard() {
                     soundManager.playClick();
                     setActiveTab(item.id);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all focus-ring ${
                     isActive
-                      ? 'bg-ink-800 text-amber-400 shadow-sm border border-amber-500/30'
-                      : 'text-ink-400 hover:text-ink-200 hover:bg-ink-850/50'
+                      ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400 shadow-sm border border-amber-500/30 font-extrabold'
+                      : 'text-ink-400 hover:text-ink-200 hover:bg-ink-800/40'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -603,43 +617,45 @@ export default function Dashboard() {
             })}
           </nav>
 
-          {/* Controls, Audio, Theme, Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          {/* Controls, Audio, Theme, Logout */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <button
               type="button"
               onClick={toggleAudio}
-              className={`p-2 rounded-xl border transition-all text-xs flex items-center gap-1 ${
+              className={`p-2 rounded-xl border transition-all text-xs flex items-center gap-1 focus-ring ${
                 isMuted
                   ? 'bg-ink-850 border-ink-800 text-ink-500'
                   : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
               }`}
               title={isMuted ? 'Unmute sound effects' : 'Mute sound effects'}
-              aria-label="Toggle Sound"
+              aria-label={isMuted ? 'Unmute sound effects' : 'Mute sound effects'}
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
 
             <ThemeToggle />
 
+            {/* Logout Icon Button in Red */}
             <button
               type="button"
               onClick={() => {
                 soundManager.playClick();
                 signOut();
               }}
-              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3"
-              aria-label="Sign out"
+              className="p-2 rounded-xl border border-flame-500/30 bg-flame-500/10 text-flame-400 hover:bg-flame-500/20 hover:text-flame-300 transition-all focus-ring"
+              title="Logout"
+              aria-label="Logout"
             >
-              <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Leave Realm</span>
+              <LogOut className="w-4 h-4 text-flame-400" />
             </button>
 
             {/* Mobile Menu Toggle Button */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="lg:hidden btn-ghost p-2"
-              aria-label="Toggle Navigation Menu"
+              className="lg:hidden p-2 rounded-xl border border-ink-800 bg-ink-850 text-ink-300 hover:text-ink-100 focus-ring"
+              aria-expanded={mobileMenuOpen}
+              aria-label="Toggle navigation menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -655,29 +671,32 @@ export default function Dashboard() {
               exit={{ opacity: 0, height: 0 }}
               className="lg:hidden border-t border-ink-800 bg-ink-900 px-4 py-3 space-y-1"
             >
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      soundManager.playClick();
-                      setActiveTab(item.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${
-                      isActive
-                        ? 'bg-ink-800 text-amber-400 border border-amber-500/30'
-                        : 'text-ink-400 hover:text-ink-200'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
+              <nav aria-label="Mobile navigation" className="space-y-1">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        soundManager.playClick();
+                        setActiveTab(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all focus-ring ${
+                        isActive
+                          ? 'bg-ink-800 text-amber-400 border border-amber-500/30'
+                          : 'text-ink-400 hover:text-ink-200'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span>{item.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
             </motion.div>
           )}
         </AnimatePresence>
@@ -685,50 +704,101 @@ export default function Dashboard() {
 
       {/* Main Tab Content */}
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Top Overview Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
-              {/* Sidebar: Character Panel */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'dashboard' && (
               <div className="space-y-6">
-                <CharacterPanel profile={profile} inventory={inventory} />
+                {/* Top Horizontal Character Panel Hero Banner */}
+                <CharacterPanel profile={profile} inventory={inventory} variant="horizontal" />
 
-                {/* Boss Battle Glance Card */}
-                <div
-                  onClick={() => {
-                    soundManager.playClick();
-                    setActiveTab('boss');
-                  }}
-                  className="rpg-card p-5 border border-flame-500/30 bg-gradient-to-br from-flame-500/10 via-ink-900 to-ink-950 rounded-3xl cursor-pointer hover:border-flame-500/50 transition-all shadow-ios-md group"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl">🐉</span>
-                      <div>
-                        <h4 className="text-xs font-bold text-flame-400 uppercase tracking-wider">
-                          Daily Realm Raid
-                        </h4>
-                        <p className="text-sm font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
-                          Malakor the Sloth Wyrm
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-xs text-amber-400 font-bold group-hover:translate-x-0.5 transition-transform">
-                      Attack &rarr;
-                    </span>
+                {/* Dashboard Main Grid: Quests + Boss Glance */}
+                <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
+                  {/* Main Column: Quest Board */}
+                  <div className="space-y-6">
+                    <QuestBoard
+                      quests={quests}
+                      loading={loadingQuests}
+                      customCategories={customCategories}
+                      onAdd={handleAddQuest}
+                      onEdit={handleEditQuest}
+                      onComplete={handleCompleteQuest}
+                      onDelete={handleDeleteQuest}
+                      completingId={completingId}
+                    />
                   </div>
-                  <p className="text-xs text-ink-400 font-normal">
-                    Complete quests to deal critical strikes and unlock the daily victory chest!
-                  </p>
+
+                  {/* Side Column: Boss Raid Glance & Activity Quick Peek */}
+                  <div className="space-y-6">
+                    {/* Boss Battle Glance Card */}
+                    <div
+                      onClick={() => {
+                        soundManager.playClick();
+                        setActiveTab('boss');
+                      }}
+                      className="rpg-card p-5 border border-flame-500/30 bg-gradient-to-br from-flame-500/10 via-ink-900 to-ink-950 rounded-3xl cursor-pointer hover:border-flame-500/50 transition-all shadow-ios-md group"
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl">🐉</span>
+                          <div>
+                            <h4 className="text-xs font-bold text-flame-400 uppercase tracking-wider">
+                              Daily Realm Raid
+                            </h4>
+                            <p className="text-sm font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
+                              Malakor the Sloth Wyrm
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-amber-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                          Attack &rarr;
+                        </span>
+                      </div>
+                      <p className="text-xs text-ink-400 font-normal">
+                        Complete quests to deal critical strikes and unlock the daily victory chest!
+                      </p>
+                    </div>
+
+                    {/* Chronicles Quick Link */}
+                    <div
+                      onClick={() => {
+                        soundManager.playClick();
+                        setActiveTab('chronicles');
+                      }}
+                      className="rpg-card p-5 border border-ink-800 bg-ink-900 rounded-3xl cursor-pointer hover:border-ink-700 transition-all shadow-ios-sm flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                          📜
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
+                            Hero Activity Log
+                          </h4>
+                          <p className="text-xs text-ink-400">View streak history and past completed quests</p>
+                        </div>
+                      </div>
+                      <span className="text-xs text-ink-400 group-hover:text-amber-400 font-bold">
+                        &rarr;
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Main Board: Active Quests & QuestBoard */}
-              <div className="space-y-6">
+            {activeTab === 'quests' && (
+              <div className="max-w-4xl mx-auto">
                 <QuestBoard
                   quests={quests}
                   loading={loadingQuests}
                   customCategories={customCategories}
+                  initialCategoryFilter={categoryFilterFromManager}
                   onAdd={handleAddQuest}
                   onEdit={handleEditQuest}
                   onComplete={handleCompleteQuest}
@@ -736,78 +806,68 @@ export default function Dashboard() {
                   completingId={completingId}
                 />
               </div>
-            </div>
-          </div>
-        )}
+            )}
 
-        {activeTab === 'quests' && (
-          <div className="max-w-4xl mx-auto">
-            <QuestBoard
-              quests={quests}
-              loading={loadingQuests}
-              customCategories={customCategories}
-              initialCategoryFilter={categoryFilterFromManager}
-              onAdd={handleAddQuest}
-              onEdit={handleEditQuest}
-              onComplete={handleCompleteQuest}
-              onDelete={handleDeleteQuest}
-              completingId={completingId}
-            />
-          </div>
-        )}
+            {activeTab === 'progress' && (
+              <div className="max-w-5xl mx-auto">
+                <ProgressPage profile={profile} quests={quests} customCategories={customCategories} />
+              </div>
+            )}
 
-        {activeTab === 'boss' && (
-          <div className="max-w-3xl mx-auto">
-            <BossBattle
-              quests={quests}
-              profile={profile}
-              onClaimVictoryBonus={handleClaimBossBonus}
-            />
-          </div>
-        )}
+            {activeTab === 'boss' && (
+              <div className="max-w-3xl mx-auto">
+                <BossBattle
+                  quests={quests}
+                  profile={profile}
+                  onClaimVictoryBonus={handleClaimBossBonus}
+                />
+              </div>
+            )}
 
-        {activeTab === 'chronicles' && (
-          <div className="max-w-4xl mx-auto">
-            <ActivityTimeline quests={quests} profile={profile} />
-          </div>
-        )}
+            {activeTab === 'chronicles' && (
+              <div className="max-w-4xl mx-auto">
+                <ActivityTimeline quests={quests} profile={profile} customCategories={customCategories} />
+              </div>
+            )}
 
-        {activeTab === 'character' && (
-          <div className="max-w-2xl mx-auto">
-            <CharacterPanel profile={profile} inventory={inventory} />
-          </div>
-        )}
+            {activeTab === 'character' && (
+              <div className="max-w-2xl mx-auto">
+                <CharacterPanel profile={profile} inventory={inventory} />
+              </div>
+            )}
 
-        {activeTab === 'shop' && (
-          <div className="max-w-4xl mx-auto">
-            <Shop
-              shopItems={shopItems}
-              inventory={inventory}
-              profile={profile}
-              onBuy={handleBuyItem}
-              onToggleEquip={handleToggleEquip}
-              loading={loadingShop}
-            />
-          </div>
-        )}
+            {activeTab === 'shop' && (
+              <div className="max-w-4xl mx-auto">
+                <Shop
+                  shopItems={shopItems}
+                  inventory={inventory}
+                  profile={profile}
+                  onBuy={handleBuyItem}
+                  onToggleEquip={handleToggleEquip}
+                  loading={loadingShop}
+                />
+              </div>
+            )}
 
-        {activeTab === 'categories' && (
-          <div className="max-w-5xl mx-auto">
-            <CategoryManager
-              quests={quests}
-              customCategories={customCategories}
-              onAddCategory={handleAddCustomCategory}
-              onDeleteCategory={handleDeleteCustomCategory}
-              onSelectCategoryFilter={(catKey) => {
-                setCategoryFilterFromManager(catKey);
-                setActiveTab('quests');
-              }}
-              onCompleteQuest={handleCompleteQuest}
-              onDeleteQuest={handleDeleteQuest}
-              completingId={completingId}
-            />
-          </div>
-        )}
+            {activeTab === 'categories' && (
+              <div className="max-w-5xl mx-auto">
+                <CategoryManager
+                  quests={quests}
+                  customCategories={customCategories}
+                  onAddCategory={handleAddCustomCategory}
+                  onDeleteCategory={handleDeleteCustomCategory}
+                  onSelectCategoryFilter={(catKey) => {
+                    setCategoryFilterFromManager(catKey);
+                    setActiveTab('quests');
+                  }}
+                  onCompleteQuest={handleCompleteQuest}
+                  onDeleteQuest={handleDeleteQuest}
+                  completingId={completingId}
+                />
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Level up overlay */}
@@ -824,13 +884,21 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20, x: '-50%' }}
               animate={{ opacity: 1, y: 0, x: '-50%' }}
               exit={{ opacity: 0, y: 20, x: '-50%' }}
-              className={`fixed bottom-6 left-1/2 z-50 px-4 py-2.5 rounded-2xl border backdrop-blur-md text-sm font-semibold shadow-2xl ${
+              className={`fixed bottom-6 left-1/2 z-50 px-4 py-2.5 rounded-2xl border backdrop-blur-md text-sm font-semibold shadow-2xl flex items-center gap-3 ${
                 toast.type === 'success'
                   ? 'bg-emerald2-500/20 border-emerald2-500/40 text-emerald2-300'
                   : 'bg-flame-500/20 border-flame-500/40 text-flame-300'
               }`}
             >
-              {toast.message}
+              <span>{toast.message}</span>
+              <button
+                type="button"
+                onClick={() => setToast(null)}
+                className="p-1 rounded-lg hover:bg-white/10 transition-colors focus-ring"
+                aria-label="Dismiss notification"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
             </motion.div>
           )}
         </AnimatePresence>

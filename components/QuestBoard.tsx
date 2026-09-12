@@ -20,6 +20,7 @@ import {
   Heart,
   Users,
   Zap,
+  AlertTriangle,
 } from 'lucide-react';
 import type { Quest } from '@/lib/supabase';
 import {
@@ -126,6 +127,9 @@ export default function QuestBoard({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Inline Delete Confirmation state
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   // Filter & Sort State
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'active' | 'completed' | 'all'>('active');
@@ -176,12 +180,18 @@ export default function QuestBoard({
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) {
+      soundManager.playValidationErrorSound();
       setError('Please provide a quest title.');
+      return;
+    }
+    if (title.trim().length > 100) {
+      soundManager.playValidationErrorSound();
+      setError('Quest title cannot exceed 100 characters.');
       return;
     }
     setError(null);
     setSubmitting(true);
-    soundManager.playClick();
+    soundManager.playSaveSound();
 
     try {
       if (editingQuest && onEdit) {
@@ -235,6 +245,20 @@ export default function QuestBoard({
     setShowForm(true);
   }
 
+  function handleInitiateDelete(questId: string) {
+    if (deletingId === questId) {
+      soundManager.playAbandonSound();
+      onDelete(questId);
+      setDeletingId(null);
+    } else {
+      soundManager.playClick();
+      setDeletingId(questId);
+      setTimeout(() => {
+        setDeletingId((current) => (current === questId ? null : current));
+      }, 3000);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header with Actions */}
@@ -251,11 +275,12 @@ export default function QuestBoard({
               soundManager.playClick();
               setShowBounties(!showBounties);
             }}
-            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-ios-sm ${
+            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-ios-sm focus-ring ${
               showBounties
                 ? 'bg-amber-500 text-ink-950 shadow-[0_0_15px_rgba(251,191,36,0.3)]'
                 : 'bg-ink-850 hover:bg-ink-800 text-amber-400 border border-amber-500/30'
             }`}
+            aria-label="Toggle Tavern Bounties section"
           >
             <BookmarkPlus className="w-4 h-4" />
             <span>Tavern Bounties</span>
@@ -272,7 +297,8 @@ export default function QuestBoard({
                 setDescription('');
               }
             }}
-            className="btn-primary px-4 py-2 text-xs font-bold rounded-2xl flex items-center gap-1.5 shadow-ios-md"
+            className="btn-primary px-4 py-2 text-xs font-bold rounded-2xl flex items-center gap-1.5 shadow-ios-md focus-ring"
+            aria-label={showForm ? 'Cancel new quest form' : 'Create new quest'}
           >
             {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
             <span>{showForm ? 'Cancel' : 'New Quest'}</span>
@@ -301,7 +327,6 @@ export default function QuestBoard({
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                 {TAVERN_BOUNTIES.map((bounty, idx) => {
                   const diff = getDifficulty(bounty.difficulty);
-                  const cat = getCategory(bounty.category);
                   return (
                     <div
                       key={idx}
@@ -325,7 +350,8 @@ export default function QuestBoard({
                       <button
                         type="button"
                         onClick={() => handleClaimBounty(bounty)}
-                        className="mt-3 w-full py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
+                        className="mt-3 w-full py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all focus-ring"
+                        aria-label={`Accept tavern bounty "${bounty.title}"`}
                       >
                         <Plus className="w-3 h-3" /> Accept Bounty
                       </button>
@@ -351,10 +377,23 @@ export default function QuestBoard({
               onSubmit={handleSubmit}
               className="rpg-card p-5 sm:p-6 border border-amber-500/30 rounded-3xl space-y-4 shadow-ios-lg bg-ink-900"
             >
-              <h3 className="text-sm font-bold text-ink-200 flex items-center gap-2">
-                <Swords className="w-4 h-4 text-amber-500" />
-                {editingQuest ? 'Edit Quest Details' : 'Forge a New Quest'}
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-ink-200 flex items-center gap-2">
+                  <Swords className="w-4 h-4 text-amber-500" />
+                  {editingQuest ? 'Edit Quest Details' : 'Forge a New Quest'}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingQuest(null);
+                  }}
+                  className="text-ink-400 hover:text-ink-200 p-1 focus-ring rounded-lg"
+                  aria-label="Close quest form"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
 
               {error && (
                 <div className="text-xs text-flame-500 bg-flame-500/10 border border-flame-500/20 p-2.5 rounded-xl">
@@ -363,13 +402,23 @@ export default function QuestBoard({
               )}
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-ink-300">Quest Title *</label>
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-semibold text-ink-300">Quest Title *</label>
+                  <span
+                    className={`text-[10px] tabular-nums font-semibold ${
+                      title.length > 90 ? 'text-flame-400' : 'text-ink-500'
+                    }`}
+                  >
+                    {title.length} / 100
+                  </span>
+                </div>
                 <input
                   type="text"
                   value={title}
+                  maxLength={100}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Conquer 50 Pushups or Complete React Chapter"
-                  className="input-field text-sm"
+                  className="input-field text-sm focus-ring"
                   disabled={submitting}
                 />
               </div>
@@ -381,7 +430,7 @@ export default function QuestBoard({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Add specific objectives, links, or notes..."
                   rows={2}
-                  className="input-field text-sm resize-none"
+                  className="input-field text-sm resize-none focus-ring"
                   disabled={submitting}
                 />
               </div>
@@ -392,7 +441,7 @@ export default function QuestBoard({
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="input-field text-sm"
+                    className="input-field text-sm focus-ring cursor-pointer"
                     disabled={submitting}
                   >
                     {allCategories.map((c) => (
@@ -408,7 +457,7 @@ export default function QuestBoard({
                   <select
                     value={difficulty}
                     onChange={(e) => setDifficulty(e.target.value as DifficultyKey)}
-                    className="input-field text-sm"
+                    className="input-field text-sm focus-ring cursor-pointer"
                     disabled={submitting}
                   >
                     {DIFFICULTIES.map((d) => (
@@ -427,14 +476,14 @@ export default function QuestBoard({
                     setShowForm(false);
                     setEditingQuest(null);
                   }}
-                  className="px-4 py-2 bg-ink-800 text-ink-300 rounded-xl text-xs font-semibold hover:bg-ink-700"
+                  className="px-4 py-2 bg-ink-800 text-ink-300 rounded-xl text-xs font-semibold hover:bg-ink-700 focus-ring"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="btn-primary px-5 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5"
+                  className="btn-primary px-5 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 focus-ring"
                 >
                   {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   {editingQuest ? 'Save Changes' : 'Accept Quest'}
@@ -456,8 +505,19 @@ export default function QuestBoard({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search active & completed quests..."
-              className="input-field pl-10 text-xs w-full"
+              className="input-field pl-10 text-xs w-full focus-ring"
+              aria-label="Search quests"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400 hover:text-ink-200 focus-ring p-1 rounded"
+                aria-label="Clear quest search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Status Tabs */}
@@ -467,11 +527,12 @@ export default function QuestBoard({
                 key={s}
                 type="button"
                 onClick={() => setStatusFilter(s)}
-                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all focus-ring ${
                   statusFilter === s
-                    ? 'bg-white dark:bg-zinc-800 text-amber-500 shadow-ios-sm'
+                    ? 'bg-white dark:bg-ink-800 text-amber-500 shadow-ios-sm'
                     : 'text-ink-400 hover:text-ink-200'
                 }`}
+                aria-label={`Filter status: ${s}`}
               >
                 {s}
               </button>
@@ -480,13 +541,17 @@ export default function QuestBoard({
         </div>
 
         {/* Category & Tier Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-ink-800 text-xs">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-ink-400 mr-1" />
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-ink-800 text-xs">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1 text-ink-400">
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline text-[11px] font-semibold">Filter:</span>
+            </div>
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
+              className="bg-ink-850 border border-ink-800 rounded-lg px-2.5 py-1 text-xs text-ink-300 focus-ring cursor-pointer min-w-[120px]"
+              aria-label="Filter quests by category"
             >
               <option value="all">All Categories</option>
               {allCategories.map((c) => (
@@ -499,7 +564,8 @@ export default function QuestBoard({
             <select
               value={difficultyFilter}
               onChange={(e) => setDifficultyFilter(e.target.value)}
-              className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
+              className="bg-ink-850 border border-ink-800 rounded-lg px-2.5 py-1 text-xs text-ink-300 focus-ring cursor-pointer min-w-[110px]"
+              aria-label="Filter quests by difficulty"
             >
               <option value="all">All Tiers</option>
               {DIFFICULTIES.map((d) => (
@@ -510,12 +576,13 @@ export default function QuestBoard({
             </select>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <ArrowUpDown className="w-3.5 h-3.5 text-ink-400" />
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
-              className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
+              className="bg-ink-850 border border-ink-800 rounded-lg px-2.5 py-1 text-xs text-ink-300 focus-ring cursor-pointer min-w-[130px]"
+              aria-label="Sort quests order"
             >
               <option value="newest">Newest First</option>
               <option value="oldest">Oldest First</option>
@@ -552,6 +619,7 @@ export default function QuestBoard({
               const diffConfig = getDifficulty(quest.difficulty);
               const isCompleted = quest.status === 'completed';
               const isCompleting = completingId === quest.id;
+              const isDeleting = deletingId === quest.id;
               const IconComp = catConfig.icon;
 
               return (
@@ -567,17 +635,17 @@ export default function QuestBoard({
                       : 'border-ink-800 bg-ink-900 hover:border-ink-700'
                   }`}
                 >
-                  <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="flex items-start gap-3.5 min-w-0 flex-1">
                     <div
                       className={`w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${catConfig.bgColor} border ${catConfig.borderColor}`}
                     >
                       <IconComp className={`w-5 h-5 ${catConfig.textColor}`} />
                     </div>
 
-                    <div className="min-w-0 space-y-1">
+                    <div className="min-w-0 space-y-1 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <h3
-                          className={`text-sm font-bold truncate ${
+                          className={`text-sm font-bold break-words ${
                             isCompleted ? 'line-through text-ink-400' : 'text-ink-200'
                           }`}
                         >
@@ -599,52 +667,66 @@ export default function QuestBoard({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 self-end sm:self-center shrink-0">
                     {!isCompleted ? (
                       <>
                         <button
                           type="button"
                           onClick={() => handleStartEdit(quest)}
-                          className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-ink-200 hover:border-ink-700 transition-all"
+                          className="p-2 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-ink-200 hover:border-ink-700 transition-all focus-ring"
                           title="Edit quest"
+                          aria-label={`Edit quest "${quest.title}"`}
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
 
-                        <button
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
                           type="button"
                           onClick={() => {
                             soundManager.playQuestComplete();
                             onComplete(quest);
                           }}
                           disabled={isCompleting}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm"
+                          className="px-3.5 py-2 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring"
                           title="Complete Quest"
+                          aria-label={`Complete quest "${quest.title}"`}
                         >
                           {isCompleting ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <Check className="w-3.5 h-3.5" />
+                            <motion.span initial={{ scale: 0.8 }} animate={{ scale: [1, 1.35, 1] }} transition={{ duration: 0.3 }}>
+                              <Check className="w-3.5 h-3.5" />
+                            </motion.span>
                           )}
                           Complete
-                        </button>
+                        </motion.button>
                       </>
                     ) : (
-                      <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
+                      <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
                         <Check className="w-3.5 h-3.5" /> Completed
                       </span>
                     )}
 
+                    {/* Delete button with inline confirmation */}
                     <button
                       type="button"
-                      onClick={() => {
-                        soundManager.playClick();
-                        onDelete(quest.id);
-                      }}
-                      className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30 transition-all"
-                      title="Abandon quest"
+                      onClick={() => handleInitiateDelete(quest.id)}
+                      className={`p-2 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center gap-1 ${
+                        isDeleting
+                          ? 'bg-flame-500/20 border-flame-500/60 text-flame-400 px-3'
+                          : 'bg-ink-850 border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30'
+                      }`}
+                      title={isDeleting ? 'Click again to confirm deletion' : 'Delete quest'}
+                      aria-label={`Delete quest "${quest.title}"`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {isDeleting ? (
+                        <>
+                          <AlertTriangle className="w-3.5 h-3.5 animate-pulse" /> Confirm?
+                        </>
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </motion.div>
