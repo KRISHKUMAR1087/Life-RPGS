@@ -291,10 +291,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
+      const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { username: cleanUsername } },
+        options: {
+          data: { username: cleanUsername },
+          emailRedirectTo,
+        },
       });
 
       if (error) return { error: error.message };
