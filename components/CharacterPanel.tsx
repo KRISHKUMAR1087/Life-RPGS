@@ -14,7 +14,7 @@ import {
   ListFilter,
 } from 'lucide-react';
 import type { Profile, InventoryItem } from '@/lib/supabase';
-import { xpForLevel, getRankTitle, CATEGORIES } from '@/lib/rpg';
+import { xpForLevel, getRankTitle, CATEGORIES, formatUsername, calculatePlatformRanks, getCountry } from '@/lib/rpg';
 import StatRadarChart from '@/components/StatRadarChart';
 
 type CharacterPanelProps = {
@@ -30,6 +30,8 @@ export default function CharacterPanel({
 }: CharacterPanelProps) {
   const [viewMode, setViewMode] = useState<'radar' | 'bars'>('radar');
 
+  const cleanUsername = formatUsername(profile.username);
+  const platformRanks = calculatePlatformRanks(profile);
   const xpNeeded = xpForLevel(profile.level);
   const xpPercent = Math.min(100, (profile.xp / xpNeeded) * 100);
   const rankTitle = getRankTitle(profile.level);
@@ -47,6 +49,7 @@ export default function CharacterPanel({
         : cat.key === 'charisma'
         ? profile.charisma
         : profile.dexterity,
+    rank: platformRanks.categoryRanks[cat.key]?.rank || 1,
   }));
 
   // Check equipped items
@@ -76,7 +79,7 @@ export default function CharacterPanel({
                 className={`w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-ios-md transition-all ${frameBorderClass}`}
               >
                 <span className="text-2xl font-heading font-extrabold text-white select-none">
-                  {profile.username.charAt(0).toUpperCase() || 'H'}
+                  {cleanUsername.charAt(0).toUpperCase() || 'H'}
                 </span>
               </div>
               <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center border-2 border-white dark:border-ink-950 shadow-ios-sm">
@@ -86,8 +89,9 @@ export default function CharacterPanel({
 
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-base">{getCountry(profile.country).flag}</span>
                 <h2 className="font-heading text-lg font-bold text-ink-200 truncate">
-                  {profile.username || 'Hero'}
+                  {cleanUsername}
                 </h2>
                 {equippedBadge && (
                   <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
@@ -101,10 +105,14 @@ export default function CharacterPanel({
                 {equippedTitle?.shop_items?.name ? equippedTitle.shop_items.name : rankTitle}
               </p>
 
-              <div className="flex items-center gap-3 mt-1 text-xs text-ink-400 font-medium">
+              <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-ink-400 font-medium">
                 <span className="flex items-center gap-1">
                   <Star className="w-3.5 h-3.5 text-amber-500" />
                   {profile.total_xp.toLocaleString()} Total XP
+                </span>
+                <span className="flex items-center gap-1 text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px]">
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  Overall Rank #{platformRanks.overallRank}
                 </span>
               </div>
             </div>
@@ -177,7 +185,7 @@ export default function CharacterPanel({
             className={`w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-ios-md transition-all ${frameBorderClass}`}
           >
             <span className="text-2xl font-heading font-extrabold text-white select-none">
-              {profile.username.charAt(0).toUpperCase() || 'H'}
+              {cleanUsername.charAt(0).toUpperCase() || 'H'}
             </span>
           </div>
           <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center border-2 border-white dark:border-ink-950 shadow-ios-sm">
@@ -187,8 +195,9 @@ export default function CharacterPanel({
 
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
+            <span className="text-base">{getCountry(profile.country).flag}</span>
             <h2 className="font-heading text-lg font-bold text-ink-200 truncate">
-              {profile.username || 'Hero'}
+              {cleanUsername}
             </h2>
             {equippedBadge && (
               <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
@@ -202,10 +211,14 @@ export default function CharacterPanel({
             {equippedTitle?.shop_items?.name ? equippedTitle.shop_items.name : rankTitle}
           </p>
 
-          <div className="flex items-center gap-3 mt-1 text-xs text-ink-400 font-medium">
+          <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-ink-400 font-medium">
             <span className="flex items-center gap-1">
               <Star className="w-3.5 h-3.5 text-amber-500" />
               {profile.total_xp.toLocaleString()} Total XP
+            </span>
+            <span className="flex items-center gap-1 text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px]">
+              <Trophy className="w-3 h-3 text-amber-400" />
+              Rank #{platformRanks.overallRank}
             </span>
           </div>
         </div>

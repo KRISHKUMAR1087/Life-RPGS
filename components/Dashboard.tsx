@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Swords,
@@ -20,6 +20,8 @@ import {
   Sparkles,
   Zap,
   TrendingUp,
+  UserCog,
+  Trophy,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -34,6 +36,8 @@ import {
 import {
   loadCustomCategories,
   saveCustomCategories,
+  formatUsername,
+  getISTDateString,
   type CategoryConfig,
   type CategoryKey,
   type DifficultyKey,
@@ -49,7 +53,9 @@ import {
   editLocalQuest,
   toggleEquipLocalItem,
   addLocalVictoryBonus,
+  processISTQuestResets,
 } from '@/lib/localStore';
+import { getAdminShopItems } from '@/lib/adminStore';
 
 import { soundManager } from '@/lib/audio';
 import CharacterPanel from '@/components/CharacterPanel';
@@ -57,24 +63,20 @@ import QuestBoard from '@/components/QuestBoard';
 import Shop from '@/components/Shop';
 import CategoryManager from '@/components/CategoryManager';
 import ProgressPage from '@/components/ProgressPage';
+import ProfilePage from '@/components/ProfilePage';
+import Leaderboard from '@/components/Leaderboard';
+import OnboardingPage from '@/components/OnboardingPage';
 import LevelUpOverlay from '@/components/LevelUpOverlay';
 import FloatingRewards, { type FloatingReward } from '@/components/FloatingRewards';
 import BossBattle from '@/components/BossBattle';
-import ActivityTimeline from '@/components/ActivityTimeline';
 import MusicPlayer from '@/components/MusicPlayer';
 import ThemeToggle from '@/components/ThemeToggle';
 import OfflineBanner, { useOnlineStatus } from '@/components/OfflineBanner';
 
-<<<<<<< HEAD
-type TabType = 'dashboard' | 'quests' | 'progress' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
-=======
-
-
-type TabType = 'dashboard' | 'quests' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
+type TabType = 'dashboard' | 'quests' | 'progress' | 'boss' | 'character' | 'shop' | 'categories' | 'profile' | 'chronicles' | 'leaderboard';
 
 export default function Dashboard() {
-  const { profile, user, isDemo, signOut, refreshProfile } = useAuth();
+  const { profile, user, isDemo, signOut, refreshProfile, updateProfileBio } = useAuth();
   const isOnline = useOnlineStatus();
   const isDemoMode = isDemo || user?.id === 'demo-hero';
 
@@ -82,7 +84,8 @@ export default function Dashboard() {
   const [activeTab, setActiveTabState] = useState<TabType>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('life_rpg_active_tab') as TabType;
-      if (saved && ['dashboard', 'quests', 'boss', 'chronicles', 'character', 'shop', 'categories'].includes(saved)) {
+      if (saved === 'chronicles') return 'progress';
+      if (saved && ['dashboard', 'quests', 'progress', 'categories', 'boss', 'shop', 'character', 'profile', 'leaderboard'].includes(saved)) {
         return saved;
       }
     }
@@ -114,6 +117,31 @@ export default function Dashboard() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [inFlightAction, setInFlightAction] = useState<Set<string>>(new Set());
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // 7-day activity map for Dashboard sidebar card
+  const weeklyActivityMap = useMemo(() => {
+    const days = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+    const now = new Date();
+    const map: Array<{ day: string; count: number; isToday: boolean }> = [];
+    const completedQuests = quests.filter((q) => q.status === 'completed');
+
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(now.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const count = completedQuests.filter((q) => {
+        const qDate = (q.completed_at || q.created_at).split('T')[0];
+        return qDate === dateStr;
+      }).length;
+
+      map.push({
+        day: days[d.getDay()],
+        count,
+        isToday: i === 0,
+      });
+    }
+    return map;
+  }, [quests]);
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
     if (type === 'error') {
@@ -171,7 +199,9 @@ export default function Dashboard() {
       if (error) {
         showToast('Failed to load quests.', 'error');
       } else {
-        setQuests((data as Quest[]) ?? []);
+        const fetched = (data as Quest[]) ?? [];
+        const { updatedQuests } = processISTQuestResets(fetched);
+        setQuests(updatedQuests);
       }
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Network error loading quests.', 'error');
@@ -184,7 +214,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user) return;
     if (isDemoMode) {
-      setShopItems(SEED_SHOP_ITEMS);
+      setShopItems(getAdminShopItems());
       setLoadingShop(false);
       return;
     }
@@ -194,10 +224,10 @@ export default function Dashboard() {
           .from('shop_items')
           .select('*')
           .order('price', { ascending: true });
-        setShopItems((data as ShopItem[]) ?? SEED_SHOP_ITEMS);
+        setShopItems((data as ShopItem[]) ?? getAdminShopItems());
       } catch (err) {
         console.error('Error loading shop items:', err);
-        setShopItems(SEED_SHOP_ITEMS);
+        setShopItems(getAdminShopItems());
       } finally {
         setLoadingShop(false);
       }
@@ -251,6 +281,7 @@ export default function Dashboard() {
     description: string;
     category: CategoryKey;
     difficulty: DifficultyKey;
+    frequency?: 'one_time' | 'daily' | 'weekly';
   }) {
     if (!isOnline && !isDemoMode) {
       showToast('Cannot add quest while offline.', 'error');
@@ -259,9 +290,20 @@ export default function Dashboard() {
 
     const actionKey = `add-${data.title}`;
     if (inFlightAction.has(actionKey)) return;
+
+    // Check if the same quest is already active
+    const isDuplicate = quests.some(
+      (q) => q.status === 'active' && q.title.trim().toLowerCase() === data.title.trim().toLowerCase()
+    );
+    if (isDuplicate) {
+      showToast(`"${data.title}" is already active in your quest log!`, 'error');
+      return;
+    }
+
     setInFlightAction((prev) => new Set(prev).add(actionKey));
 
     try {
+      const questFreq = data.frequency || 'daily';
       if (isDemoMode) {
         const current = loadLocalQuests();
         const newQuest: Quest = {
@@ -272,8 +314,9 @@ export default function Dashboard() {
           category: data.category,
           difficulty: data.difficulty,
           status: 'active',
+          frequency: questFreq,
           completed_at: null,
-          quest_date: new Date().toISOString().split('T')[0],
+          quest_date: getISTDateString(),
           created_at: new Date().toISOString(),
         };
         const updated = [newQuest, ...current];
@@ -288,6 +331,8 @@ export default function Dashboard() {
         description: data.description || null,
         category: data.category,
         difficulty: data.difficulty,
+        frequency: questFreq,
+        quest_date: getISTDateString(),
       });
 
       if (error) throw error;
@@ -326,6 +371,7 @@ export default function Dashboard() {
           description: updatedQuest.description,
           category: updatedQuest.category,
           difficulty: updatedQuest.difficulty,
+          frequency: updatedQuest.frequency || 'one_time',
         })
         .eq('id', updatedQuest.id);
 
@@ -546,29 +592,48 @@ export default function Dashboard() {
     }
   }
 
-  const currentProfile: Profile =
+  const rawProfile: Profile =
     profile ||
-    loadLocalProfile(user?.user_metadata?.username || user?.email?.split('@')[0] || 'Hero');
+    loadLocalProfile(formatUsername(user?.user_metadata?.username || user?.email || 'Hero'));
+
+  const currentProfile: Profile = {
+    ...rawProfile,
+    username: formatUsername(rawProfile.username),
+  };
+
+  // Standalone Full Onboarding Page View (Shown ONLY if onboarding_completed is false; never shown once completed)
+  if (!currentProfile.onboarding_completed) {
+    return (
+      <OnboardingPage
+        initialUsername={currentProfile.username}
+        initialBio={currentProfile.bio || ''}
+        initialCountry={currentProfile.country || 'US'}
+        onSubmit={async (data) => {
+          const res = await updateProfileBio({
+            username: data.username,
+            bio: data.bio,
+            country: data.country,
+            onboarding_completed: true,
+          });
+          if (res.error) {
+            throw new Error(res.error);
+          }
+          showToast('Hero profile registered successfully! Welcome to the realm.', 'success');
+        }}
+      />
+    );
+  }
 
   const NAV_ITEMS: Array<{ id: TabType; label: string; icon: typeof LayoutDashboard }> = [
-<<<<<<< HEAD
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'quests', label: 'Quests', icon: Target },
     { id: 'progress', label: 'Progress', icon: TrendingUp },
-=======
-
-    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-    { id: 'quests', label: 'Quest Board', icon: Target },
-    { id: 'boss', label: 'Realm Raid', icon: Flame },
-    { id: 'chronicles', label: 'Chronicles', icon: History },
-    { id: 'shop', label: 'Merchant Armory', icon: ShoppingBag },
-    { id: 'character', label: 'Hero Sheet', icon: User },
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
     { id: 'categories', label: 'Categories', icon: Layers },
+    { id: 'leaderboard', label: 'Rankings', icon: Trophy },
     { id: 'boss', label: 'Boss Raid', icon: Flame },
-    { id: 'chronicles', label: 'Activity', icon: History },
     { id: 'shop', label: 'Shop', icon: ShoppingBag },
     { id: 'character', label: 'Character', icon: User },
+    { id: 'profile', label: 'Profile', icon: UserCog },
   ];
 
   return (
@@ -579,57 +644,30 @@ export default function Dashboard() {
       <div className="fixed inset-0 bg-radial-fade pointer-events-none" />
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
 
-      {/* Navigation Header */}
-<<<<<<< HEAD
-      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
-=======
-      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800/80 shadow-ios-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between min-h-[68px]">
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
+      {/* Navigation Header - Floating Top Island Block */}
+      <header className="sticky top-0 z-40 px-3 sm:px-6 pt-0 pointer-events-none">
+        <div className="pointer-events-auto max-w-7xl mx-auto h-14 sm:h-16 flex items-center justify-between px-4 sm:px-6 bg-ink-900/90 dark:bg-ink-900/95 backdrop-blur-xl border-x border-b border-ink-800 rounded-b-2xl sm:rounded-b-3xl shadow-ios-md relative overflow-hidden">
+          {/* Subtle permanent accent line spanning the entire bottom border of the whole nav bar */}
+          <div className="absolute bottom-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-amber-500/30 to-transparent pointer-events-none" />
+
           {/* Logo Brand */}
           <div
-            className="flex items-center gap-2.5 cursor-pointer select-none"
+            className="flex items-center gap-2 cursor-pointer select-none"
             onClick={() => setActiveTab('dashboard')}
+            title="LifeQuest Dashboard"
           >
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm shrink-0">
               <Swords className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
-<<<<<<< HEAD
-            <div className="flex items-center gap-1.5">
-              <h1 className="font-heading text-lg font-extrabold text-ink-200 leading-none tracking-tight">
-                LifeQuest
-              </h1>
-              {isDemoMode && (
-                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
-                  LOCAL
-                </span>
-              )}
-=======
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-heading text-base sm:text-lg font-extrabold text-ink-200 leading-none tracking-tight">
-                  LifeQuest
-                </h1>
-                {isDemoMode && (
-                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
-                    LOCAL HERO
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-ink-400 mt-1 hidden sm:block font-medium">
-                Gamified RPG Productivity System
-              </p>
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
-            </div>
+            {isDemoMode && (
+              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30">
+                LOCAL
+              </span>
+            )}
           </div>
 
           {/* Desktop Navigation Menu Bar */}
-<<<<<<< HEAD
-          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1 bg-ink-900/90 dark:bg-ink-900/80 border border-ink-800 p-1 rounded-2xl shadow-inner">
-=======
-          <nav className="hidden lg:flex items-center gap-1.5 bg-ink-900/80 border border-ink-800/80 p-1.5 rounded-2xl shadow-inner">
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
+          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1 bg-ink-900/90 dark:bg-ink-900/80 border border-ink-800 p-1 rounded-2xl shadow-inner whitespace-nowrap">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -642,40 +680,22 @@ export default function Dashboard() {
                     setActiveTab(item.id);
                   }}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all focus-ring ${
+                  className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all focus-ring whitespace-nowrap shrink-0 ${
                     isActive
-                      ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400 shadow-sm border border-amber-500/30 font-extrabold'
+                      ? 'bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/30 font-extrabold'
                       : 'text-ink-400 hover:text-ink-200 hover:bg-ink-800/40'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{item.label}</span>
+                  <Icon className="w-3.5 h-3.5 shrink-0" />
+                  <span className="whitespace-nowrap">{item.label}</span>
                 </button>
               );
             })}
           </nav>
 
-<<<<<<< HEAD
-          {/* Controls, Audio, Theme, Logout */}
+          {/* Controls, Music Player, Theme, Logout */}
           <div className="flex items-center gap-2 sm:gap-2.5">
-            <button
-              type="button"
-              onClick={toggleAudio}
-              className={`p-2 rounded-xl border transition-all text-xs flex items-center gap-1 focus-ring ${
-                isMuted
-                  ? 'bg-ink-850 border-ink-800 text-ink-500'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              }`}
-              title={isMuted ? 'Unmute sound effects' : 'Mute sound effects'}
-              aria-label={isMuted ? 'Unmute sound effects' : 'Mute sound effects'}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
-=======
-          {/* Controls, Music Player, Theme, Profile */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
             <MusicPlayer onToast={showToast} />
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
 
             <ThemeToggle />
 
@@ -686,36 +706,25 @@ export default function Dashboard() {
                 soundManager.playClick();
                 signOut();
               }}
-<<<<<<< HEAD
-              className="p-2 rounded-xl border border-flame-500/30 bg-flame-500/10 text-flame-400 hover:bg-flame-500/20 hover:text-flame-300 transition-all focus-ring"
+              className="p-2 rounded-xl border border-flame-500/30 bg-flame-500/10 text-flame-500 hover:bg-flame-500/20 transition-all focus-ring"
               title="Logout"
               aria-label="Logout"
-=======
-              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm"
-              aria-label="Sign out"
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
             >
-              <LogOut className="w-4 h-4 text-flame-400" />
+              <LogOut className="w-4 h-4 text-flame-500" />
             </button>
 
             {/* Mobile Menu Toggle Button */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-<<<<<<< HEAD
               className="lg:hidden p-2 rounded-xl border border-ink-800 bg-ink-850 text-ink-300 hover:text-ink-100 focus-ring"
               aria-expanded={mobileMenuOpen}
               aria-label="Toggle navigation menu"
-=======
-              className="lg:hidden btn-ghost p-2 rounded-2xl"
-              aria-label="Toggle Navigation Menu"
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
-
 
         {/* Mobile Navigation Drawer */}
         <AnimatePresence>
@@ -724,7 +733,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-t border-ink-800 bg-ink-900 px-4 py-3 space-y-1"
+              className="pointer-events-auto max-w-7xl mx-auto lg:hidden border-x border-b border-ink-800 bg-ink-900 px-4 py-3 rounded-b-2xl shadow-ios-md mt-1"
             >
               <nav aria-label="Mobile navigation" className="space-y-1">
                 {NAV_ITEMS.map((item) => {
@@ -769,12 +778,7 @@ export default function Dashboard() {
           >
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
-<<<<<<< HEAD
-                {/* Top Horizontal Character Panel Hero Banner */}
-                <CharacterPanel profile={profile} inventory={inventory} variant="horizontal" />
-=======
-                <CharacterPanel profile={currentProfile} inventory={inventory} />
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
+                <CharacterPanel profile={currentProfile} inventory={inventory} variant="horizontal" />
 
                 {/* Dashboard Main Grid: Quests + Boss Glance */}
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
@@ -784,6 +788,7 @@ export default function Dashboard() {
                       quests={quests}
                       loading={loadingQuests}
                       customCategories={customCategories}
+                      hideUnacceptedBounties={true}
                       onAdd={handleAddQuest}
                       onEdit={handleEditQuest}
                       onComplete={handleCompleteQuest}
@@ -823,28 +828,63 @@ export default function Dashboard() {
                       </p>
                     </div>
 
-                    {/* Chronicles Quick Link */}
+                    {/* Hero Activity Log & 7-Day Weekly Progress Card */}
                     <div
                       onClick={() => {
                         soundManager.playClick();
-                        setActiveTab('chronicles');
+                        setActiveTab('progress');
                       }}
-                      className="rpg-card p-5 border border-ink-800 bg-ink-900 rounded-3xl cursor-pointer hover:border-ink-700 transition-all shadow-ios-sm flex items-center justify-between group"
+                      className="rpg-card p-5 border border-ink-800 bg-ink-900 rounded-3xl cursor-pointer hover:border-amber-500/40 transition-all shadow-ios-sm space-y-3 group"
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                          📜
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                            📜
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
+                              Hero Activity & Weekly Progress
+                            </h4>
+                            <p className="text-xs text-ink-400">7-Day Quest Completion Tracker</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
-                            Hero Activity Log
-                          </h4>
-                          <p className="text-xs text-ink-400">View streak history and past completed quests</p>
+                        <span className="text-xs text-ink-400 group-hover:text-amber-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                          &rarr;
+                        </span>
+                      </div>
+
+                      {/* 7-Day Mini Weekly Progress Bar Bar Chart */}
+                      <div className="pt-2.5 border-t border-ink-800/80">
+                        <div className="grid grid-cols-7 gap-1.5 items-end h-12 pt-1">
+                          {weeklyActivityMap.map((w: { day: string; count: number; isToday: boolean }, idx: number) => {
+                            const maxCount = Math.max(...weeklyActivityMap.map((item: { day: string; count: number; isToday: boolean }) => item.count), 1);
+                            const fillPercent = Math.max(18, (w.count / maxCount) * 100);
+                            return (
+                              <div key={idx} className="flex flex-col items-center gap-1 h-full justify-end">
+                                <div className="w-full h-8 bg-ink-850 rounded-md flex items-end justify-center p-0.5 relative overflow-hidden border border-ink-800/80">
+                                  <div
+                                    className={`w-full rounded-sm transition-all ${
+                                      w.count > 0
+                                        ? w.isToday
+                                          ? 'bg-amber-500 shadow-sm'
+                                          : 'bg-amber-500/70'
+                                        : 'bg-ink-800/40'
+                                    }`}
+                                    style={{ height: `${fillPercent}%` }}
+                                  />
+                                </div>
+                                <span
+                                  className={`text-[9px] font-bold ${
+                                    w.isToday ? 'text-amber-400' : 'text-ink-500'
+                                  }`}
+                                >
+                                  {w.day}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-                      <span className="text-xs text-ink-400 group-hover:text-amber-400 font-bold">
-                        &rarr;
-                      </span>
                     </div>
                   </div>
                 </div>
@@ -852,7 +892,7 @@ export default function Dashboard() {
             )}
 
             {activeTab === 'quests' && (
-              <div className="max-w-4xl mx-auto">
+              <div className="max-w-7xl mx-auto">
                 <QuestBoard
                   quests={quests}
                   loading={loadingQuests}
@@ -869,30 +909,23 @@ export default function Dashboard() {
 
             {activeTab === 'progress' && (
               <div className="max-w-5xl mx-auto">
-                <ProgressPage profile={profile} quests={quests} customCategories={customCategories} />
+                <ProgressPage profile={currentProfile} quests={quests} customCategories={customCategories} />
               </div>
             )}
 
-<<<<<<< HEAD
             {activeTab === 'boss' && (
               <div className="max-w-3xl mx-auto">
                 <BossBattle
                   quests={quests}
-                  profile={profile}
+                  profile={currentProfile}
                   onClaimVictoryBonus={handleClaimBossBonus}
                 />
               </div>
             )}
 
-            {activeTab === 'chronicles' && (
-              <div className="max-w-4xl mx-auto">
-                <ActivityTimeline quests={quests} profile={profile} customCategories={customCategories} />
-              </div>
-            )}
-
             {activeTab === 'character' && (
               <div className="max-w-2xl mx-auto">
-                <CharacterPanel profile={profile} inventory={inventory} />
+                <CharacterPanel profile={currentProfile} inventory={inventory} />
               </div>
             )}
 
@@ -901,7 +934,7 @@ export default function Dashboard() {
                 <Shop
                   shopItems={shopItems}
                   inventory={inventory}
-                  profile={profile}
+                  profile={currentProfile}
                   onBuy={handleBuyItem}
                   onToggleEquip={handleToggleEquip}
                   loading={loadingShop}
@@ -926,64 +959,23 @@ export default function Dashboard() {
                 />
               </div>
             )}
+
+            {activeTab === 'profile' && (
+              <div className="max-w-5xl mx-auto">
+                <ProfilePage inventory={inventory} showToast={showToast} />
+              </div>
+            )}
+
+            {activeTab === 'leaderboard' && (
+              <div className="max-w-5xl mx-auto">
+                <Leaderboard profile={currentProfile} quests={quests} />
+              </div>
+            )}
           </motion.div>
         </AnimatePresence>
-=======
-        {activeTab === 'boss' && (
-          <div className="max-w-3xl mx-auto">
-            <BossBattle
-              quests={quests}
-              profile={currentProfile}
-              onClaimVictoryBonus={handleClaimBossBonus}
-            />
-          </div>
-        )}
-
-        {activeTab === 'chronicles' && (
-          <div className="max-w-4xl mx-auto">
-            <ActivityTimeline quests={quests} profile={currentProfile} />
-          </div>
-        )}
-
-        {activeTab === 'character' && (
-          <div className="max-w-2xl mx-auto">
-            <CharacterPanel profile={currentProfile} inventory={inventory} />
-          </div>
-        )}
-
-        {activeTab === 'shop' && (
-          <div className="max-w-4xl mx-auto">
-            <Shop
-              shopItems={shopItems}
-              inventory={inventory}
-              profile={currentProfile}
-              onBuy={handleBuyItem}
-              onToggleEquip={handleToggleEquip}
-              loading={loadingShop}
-            />
-          </div>
-        )}
-
-
-        {activeTab === 'categories' && (
-          <div className="max-w-5xl mx-auto">
-            <CategoryManager
-              quests={quests}
-              customCategories={customCategories}
-              onAddCategory={handleAddCustomCategory}
-              onDeleteCategory={handleDeleteCustomCategory}
-              onSelectCategoryFilter={(catKey) => {
-                setCategoryFilterFromManager(catKey);
-                setActiveTab('quests');
-              }}
-              onCompleteQuest={handleCompleteQuest}
-              onDeleteQuest={handleDeleteQuest}
-              completingId={completingId}
-            />
-          </div>
-        )}
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
       </main>
+
+
 
       {/* Level up overlay */}
       <LevelUpOverlay level={levelUpLevel} onClose={() => setLevelUpLevel(null)} />

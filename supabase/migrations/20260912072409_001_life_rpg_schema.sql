@@ -22,6 +22,7 @@ progression. Gold is spent in a shop for cosmetic items and badges.
 CREATE TABLE IF NOT EXISTS profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username text NOT NULL DEFAULT '',
+  bio text DEFAULT '',
   level int NOT NULL DEFAULT 1,
   xp int NOT NULL DEFAULT 0,
   total_xp int NOT NULL DEFAULT 0,
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS quests (
   category text NOT NULL CHECK (category IN ('strength','intellect','vitality','charisma','dexterity')),
   difficulty text NOT NULL DEFAULT 'medium' CHECK (difficulty IN ('easy','medium','hard','epic')),
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','completed','abandoned')),
+  frequency text NOT NULL DEFAULT 'one_time' CHECK (frequency IN ('one_time','daily','weekly')),
   completed_at timestamptz,
   quest_date date NOT NULL DEFAULT CURRENT_DATE,
   created_at timestamptz NOT NULL DEFAULT now()

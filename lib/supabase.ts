@@ -5,6 +5,10 @@ export const supabase = createBrowserSupabaseClient();
 export type Profile = {
   id: string;
   username: string;
+  bio?: string | null;
+  country?: string | null;
+  is_public?: boolean;
+  onboarding_completed?: boolean;
   level: number;
   xp: number;
   total_xp: number;
@@ -29,6 +33,7 @@ export type Quest = {
   category: string;
   difficulty: string;
   status: string;
+  frequency?: 'one_time' | 'daily' | 'weekly';
   completed_at: string | null;
   quest_date: string;
   created_at: string;

@@ -7,7 +7,9 @@ import {
   isDemoActive,
   setDemoActive,
   loadLocalProfile,
+  saveLocalProfile,
 } from '@/lib/localStore';
+import { formatUsername } from '@/lib/rpg';
 
 type AuthContextType = {
   session: Session | null;
@@ -20,15 +22,27 @@ type AuthContextType = {
   loginDemo: (heroName?: string) => void;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<{ error: string | null }>;
+  sendPasswordResetEmail: (email?: string) => Promise<{ error: string | null }>;
+  updateProfileBio: (updates: {
+    username?: string;
+    bio?: string;
+    avatar_url?: string;
+    country?: string;
+    is_public?: boolean;
+    onboarding_completed?: boolean;
+  }) => Promise<{ error: string | null }>;
+  deleteAccount: () => Promise<{ error: string | null }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 function createMockUser(username = 'Hero'): User {
+  const cleanName = formatUsername(username);
   return {
     id: 'demo-hero',
     app_metadata: { provider: 'demo' },
-    user_metadata: { username },
+    user_metadata: { username: cleanName },
     aud: 'authenticated',
     created_at: new Date().toISOString(),
     email: 'hero@realm.local',
@@ -58,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function loadProfile(uid: string) {
     if (uid === 'demo-hero' || isDemoActive() || isPlaceholderSupabase()) {
       const p = loadLocalProfile();
-      setProfile(p);
+      setProfile({ ...p, username: formatUsername(p.username) });
       return;
     }
 
@@ -81,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error || !data) {
         // Auto-create profile record if it doesn't exist yet
-        const defaultName = user?.user_metadata?.username || user?.email?.split('@')[0] || 'Hero';
+        const defaultName = formatUsername(user?.user_metadata?.username || user?.email || 'Hero');
         const newProfile: Profile = {
           id: uid,
           username: defaultName,
@@ -99,17 +113,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           last_active_date: new Date().toISOString().split('T')[0],
           avatar_url: null,
           created_at: new Date().toISOString(),
+          onboarding_completed: false,
         };
 
         await supabase.from('profiles').upsert(newProfile);
         setProfile(newProfile);
       } else {
-        setProfile(data as Profile);
+        const local = loadLocalProfile();
+        setProfile({
+          ...local,
+          ...data,
+          username: formatUsername(data.username || local.username),
+          country: data.country || local.country || 'US',
+          is_public: data.is_public !== undefined ? data.is_public : local.is_public !== false,
+          onboarding_completed: data.onboarding_completed !== undefined ? data.onboarding_completed : local.onboarding_completed,
+        } as Profile);
       }
     } catch (err) {
       console.error('Failed to load profile:', err);
       const p = loadLocalProfile();
-      setProfile({ ...p, id: uid });
+      setProfile({ ...p, username: formatUsername(p.username), id: uid });
     }
   }
 
@@ -189,15 +212,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function loginDemo(heroName = 'Hero') {
     setDemoActive(true);
-    const p = loadLocalProfile(heroName);
-    setUser(createMockUser(p.username));
-    setProfile(p);
+    const cleanName = formatUsername(heroName);
+    const p = loadLocalProfile(cleanName);
+    const sanitizedProfile = { ...p, username: formatUsername(p.username) };
+    setUser(createMockUser(sanitizedProfile.username));
+    setProfile(sanitizedProfile);
     setIsDemo(true);
   }
 
   async function signUp(email: string, password: string, username: string) {
+    const cleanUsername = formatUsername(username || email);
     if (isPlaceholderSupabase()) {
-      loginDemo(username || email.split('@')[0] || 'Hero');
+      loginDemo(cleanUsername);
       return { error: null };
     }
 
@@ -205,7 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { data: { username } },
+        options: { data: { username: cleanUsername } },
       });
 
       if (error) return { error: error.message };
@@ -213,14 +239,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return { error: null };
     } catch (err) {
       // Fallback to local mode
-      loginDemo(username || email.split('@')[0] || 'Hero');
+      loginDemo(cleanUsername);
       return { error: null };
     }
   }
 
   async function signIn(email: string, password: string) {
+    const cleanUsername = formatUsername(email);
     if (isPlaceholderSupabase()) {
-      loginDemo(email.split('@')[0] || 'Hero');
+      loginDemo(cleanUsername);
       return { error: null };
     }
 
@@ -229,11 +256,159 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error) return { error: error.message };
       return { error: null };
     } catch (err) {
-      loginDemo(email.split('@')[0] || 'Hero');
+      loginDemo(cleanUsername);
       return { error: null };
     }
   }
 
+
+  async function updatePassword(newPassword: string) {
+    if (isDemo || isPlaceholderSupabase()) {
+      return { error: null };
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Failed to update password.' };
+    }
+  }
+
+  async function sendPasswordResetEmail(targetEmail?: string) {
+    const emailToSend = targetEmail || user?.email;
+    if (!emailToSend) return { error: 'No email address found.' };
+
+    if (isDemo || isPlaceholderSupabase()) {
+      return { error: null };
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(emailToSend, {
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}` : undefined,
+      });
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Failed to send password reset email.' };
+    }
+  }
+
+  async function updateProfileBio(updates: {
+    username?: string;
+    bio?: string;
+    avatar_url?: string;
+    country?: string;
+    is_public?: boolean;
+    onboarding_completed?: boolean;
+  }) {
+    if (!profile) return { error: 'Profile not loaded' };
+
+    const cleanUsername = updates.username !== undefined ? formatUsername(updates.username) : formatUsername(profile.username);
+
+    const updatedProfile: Profile = {
+      ...profile,
+      username: cleanUsername,
+      ...(updates.bio !== undefined && { bio: updates.bio }),
+      ...(updates.country !== undefined && { country: updates.country }),
+      ...(updates.is_public !== undefined && { is_public: updates.is_public }),
+      ...(updates.onboarding_completed !== undefined && { onboarding_completed: updates.onboarding_completed }),
+      ...(updates.avatar_url !== undefined && { avatar_url: updates.avatar_url }),
+    };
+
+    if (isDemo || isPlaceholderSupabase()) {
+      saveLocalProfile(updatedProfile);
+      setProfile(updatedProfile);
+      if (user) {
+        setUser({
+          ...user,
+          user_metadata: { ...user.user_metadata, username: cleanUsername },
+        });
+      }
+      return { error: null };
+    }
+
+    try {
+      const updateData: Record<string, unknown> = {
+        ...updates,
+        ...(updates.username !== undefined && { username: cleanUsername }),
+      };
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(updateData)
+        .eq('id', profile.id);
+
+      if (error) {
+        // If country/is_public/onboarding_completed/bio columns are not yet created on remote Supabase instance
+        if (
+          error.message?.includes('schema cache') ||
+          error.message?.includes("'country'") ||
+          error.message?.includes("'is_public'") ||
+          error.message?.includes("'onboarding_completed'") ||
+          error.message?.includes("'bio'")
+        ) {
+          // Remove columns that might not exist in remote Supabase schema
+          delete updateData.country;
+          delete updateData.is_public;
+          delete updateData.onboarding_completed;
+          delete updateData.bio;
+
+          if (Object.keys(updateData).length > 0) {
+            await supabase
+              .from('profiles')
+              .update(updateData)
+              .eq('id', profile.id);
+          }
+        } else {
+          return { error: error.message };
+        }
+      }
+
+      saveLocalProfile(updatedProfile);
+      setProfile(updatedProfile);
+
+      if (updates.username) {
+        await supabase.auth.updateUser({
+          data: { username: cleanUsername },
+        });
+      }
+
+      setProfile(updatedProfile);
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Failed to update profile.' };
+    }
+  }
+
+  async function deleteAccount() {
+    if (isDemo || isPlaceholderSupabase()) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('life_rpg_demo_profile');
+        localStorage.removeItem('life_rpg_demo_quests');
+        localStorage.removeItem('life_rpg_demo_inventory');
+        localStorage.removeItem('life_rpg_custom_categories');
+        localStorage.removeItem('life_rpg_active_tab');
+      }
+      await signOut();
+      return { error: null };
+    }
+
+    if (!user) return { error: 'No user signed in' };
+
+    try {
+      // Clean up user data tables
+      await supabase.from('quests').delete().eq('user_id', user.id);
+      await supabase.from('inventory').delete().eq('user_id', user.id);
+      await supabase.from('profiles').delete().eq('id', user.id);
+
+      await signOut();
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Failed to delete account data.' };
+    }
+  }
 
   async function signOut() {
     if (isDemo) {
@@ -254,7 +429,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ session, user, profile, loading, isDemo, signUp, signIn, loginDemo, signOut, refreshProfile }}
+      value={{
+        session,
+        user,
+        profile,
+        loading,
+        isDemo,
+        signUp,
+        signIn,
+        loginDemo,
+        signOut,
+        refreshProfile,
+        updatePassword,
+        sendPasswordResetEmail,
+        updateProfileBio,
+        deleteAccount,
+      }}
     >
       {children}
     </AuthContext.Provider>
