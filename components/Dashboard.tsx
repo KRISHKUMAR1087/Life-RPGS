@@ -54,6 +54,8 @@ import {
   toggleEquipLocalItem,
   addLocalVictoryBonus,
   processISTQuestResets,
+  getDemoCompetitors,
+  type RealmCompetitor,
 } from '@/lib/localStore';
 import { getAdminShopItems } from '@/lib/adminStore';
 
@@ -192,12 +194,28 @@ export default function Dashboard() {
 
   // Load peer profiles for rankings
   useEffect(() => {
-    if (!user || isDemoMode) return;
+    if (!user) return;
+    if (isDemoMode) {
+      const demo = getDemoCompetitors();
+      setPeerProfiles(
+        demo.map((c: RealmCompetitor) => ({
+          id: c.id,
+          total_xp: c.baseXp,
+          strength: Math.round(c.categoryXps.strength / 100),
+          intellect: Math.round(c.categoryXps.intellect / 100),
+          vitality: Math.round(c.categoryXps.vitality / 100),
+          charisma: Math.round(c.categoryXps.charisma / 100),
+          dexterity: Math.round(c.categoryXps.dexterity / 100),
+        }))
+      );
+      return;
+    }
     async function fetchPeers() {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('id, total_xp, strength, intellect, vitality, charisma, dexterity');
+          .select('id, total_xp, strength, intellect, vitality, charisma, dexterity')
+          .eq('is_public', true);
         if (data) setPeerProfiles(data);
       } catch {
         // fallback

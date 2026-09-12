@@ -493,7 +493,10 @@ export function calculatePlatformRanks(
 
   // 1. Overall Rank by total_xp
   const sortedByXp = [...pool].sort((a, b) => b.total_xp - a.total_xp);
-  const overallRank = Math.max(1, sortedByXp.findIndex((p) => p.total_xp <= userProfile.total_xp) + 1);
+  const userXpIndex = sortedByXp.findIndex(
+    (p) => (p.id && userProfile.id ? p.id === userProfile.id : p.total_xp <= userProfile.total_xp)
+  );
+  const overallRank = userXpIndex !== -1 ? userXpIndex + 1 : 1;
 
   // 2. Category Ranks
   const categories = ['strength', 'intellect', 'vitality', 'charisma', 'dexterity'] as const;
@@ -502,7 +505,10 @@ export function calculatePlatformRanks(
   for (const cat of categories) {
     const score = userProfile[cat] ?? 0;
     const sortedByCat = [...pool].sort((a, b) => (b[cat] ?? 0) - (a[cat] ?? 0));
-    const rank = Math.max(1, sortedByCat.findIndex((p) => (p[cat] ?? 0) <= score) + 1);
+    const catIndex = sortedByCat.findIndex(
+      (p) => (p.id && userProfile.id ? p.id === userProfile.id : (p[cat] ?? 0) <= score)
+    );
+    const rank = catIndex !== -1 ? catIndex + 1 : 1;
     categoryRanks[cat] = { rank, score };
   }
 
