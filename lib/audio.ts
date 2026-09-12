@@ -1,20 +1,103 @@
-// Zero-dependency Web Audio API sound synthesizer for LifeQuest RPG
+// Zero-dependency Web Audio API sound synthesizer and Background Music Engine for LifeQuest RPG
 
 class SoundManager {
   private ctx: AudioContext | null = null;
   private muted: boolean = false;
+  private bgmAudio: HTMLAudioElement | null = null;
+  private bgmPlaying: boolean = false;
+  private bgmVolume: number = 0.35;
+  private onBgmChangeCallbacks: Set<(isPlaying: boolean) => void> = new Set();
 
   constructor() {
     if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('life_rpg_muted');
-      this.muted = stored === 'true';
+      const storedMute = localStorage.getItem('life_rpg_muted');
+      this.muted = storedMute === 'true';
+
+      const storedBgm = localStorage.getItem('life_rpg_bgm');
+      this.bgmPlaying = storedBgm === 'true';
+
+      // Initialize audio element
+      this.initBgm();
     }
+  }
+
+  private initBgm(): void {
+    if (typeof window === 'undefined') return;
+    if (!this.bgmAudio) {
+      this.bgmAudio = new Audio('/BackgroundMusic.mp3');
+      this.bgmAudio.loop = true;
+      this.bgmAudio.volume = this.bgmVolume;
+      this.bgmAudio.preload = 'auto';
+
+      this.bgmAudio.addEventListener('play', () => {
+        this.bgmPlaying = true;
+        this.notifyBgmChange();
+      });
+
+      this.bgmAudio.addEventListener('pause', () => {
+        this.bgmPlaying = false;
+        this.notifyBgmChange();
+      });
+    }
+  }
+
+  public subscribeBgm(callback: (isPlaying: boolean) => void): () => void {
+    this.onBgmChangeCallbacks.add(callback);
+    callback(this.bgmPlaying);
+    return () => {
+      this.onBgmChangeCallbacks.delete(callback);
+    };
+  }
+
+  private notifyBgmChange(): void {
+    this.onBgmChangeCallbacks.forEach((cb) => cb(this.bgmPlaying));
+  }
+
+  public async playBgm(): Promise<void> {
+    this.initBgm();
+    if (!this.bgmAudio) return;
+    try {
+      this.bgmAudio.volume = this.muted ? 0 : this.bgmVolume;
+      await this.bgmAudio.play();
+      this.bgmPlaying = true;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('life_rpg_bgm', 'true');
+      }
+      this.notifyBgmChange();
+    } catch (err) {
+      console.warn('Autoplay prevented or music error:', err);
+    }
+  }
+
+  public pauseBgm(): void {
+    if (!this.bgmAudio) return;
+    this.bgmAudio.pause();
+    this.bgmPlaying = false;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('life_rpg_bgm', 'false');
+    }
+    this.notifyBgmChange();
+  }
+
+  public toggleBgm(): boolean {
+    if (this.bgmPlaying) {
+      this.pauseBgm();
+    } else {
+      this.playBgm();
+    }
+    return this.bgmPlaying;
+  }
+
+  public isBgmPlaying(): boolean {
+    return this.bgmPlaying;
   }
 
   private getContext(): AudioContext | null {
     if (typeof window === 'undefined') return null;
     if (!this.ctx) {
-      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
       }
@@ -31,6 +114,9 @@ class SoundManager {
 
   public setMuted(muted: boolean): void {
     this.muted = muted;
+    if (this.bgmAudio) {
+      this.bgmAudio.volume = muted ? 0 : this.bgmVolume;
+    }
     if (typeof window !== 'undefined') {
       localStorage.setItem('life_rpg_muted', String(muted));
     }
@@ -167,7 +253,6 @@ class SoundManager {
 
     const now = ctx.currentTime;
 
-    // White noise / punch hit
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 

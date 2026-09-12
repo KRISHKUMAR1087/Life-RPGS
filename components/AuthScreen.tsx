@@ -6,6 +6,8 @@ import { Sword, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
 
+import MusicPlayer from '@/components/MusicPlayer';
+
 export default function AuthScreen() {
   const { signIn, signUp, loginDemo } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
@@ -51,10 +53,12 @@ export default function AuthScreen() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden bg-ink-950">
-      {/* Top right iOS Theme Toggle */}
-      <div className="absolute top-5 right-5 z-20">
+      {/* Top right Music Player & Theme Toggle */}
+      <div className="absolute top-5 right-5 z-20 flex items-center gap-3">
+        <MusicPlayer />
         <ThemeToggle />
       </div>
+
 
       {/* iOS Ambient Background Accents */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-blue-500/10 dark:bg-blue-500/15 rounded-full blur-[120px] pointer-events-none" />

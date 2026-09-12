@@ -22,6 +22,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import {
   supabase,
+  type Profile,
   type Quest,
   type ShopItem,
   type InventoryItem,
@@ -40,12 +41,14 @@ import {
   loadLocalQuests,
   saveLocalQuests,
   loadLocalInventory,
+  loadLocalProfile,
   completeLocalQuest,
   purchaseLocalItem,
   editLocalQuest,
   toggleEquipLocalItem,
   addLocalVictoryBonus,
 } from '@/lib/localStore';
+
 import { soundManager } from '@/lib/audio';
 import CharacterPanel from '@/components/CharacterPanel';
 import QuestBoard from '@/components/QuestBoard';
@@ -55,8 +58,11 @@ import LevelUpOverlay from '@/components/LevelUpOverlay';
 import FloatingRewards, { type FloatingReward } from '@/components/FloatingRewards';
 import BossBattle from '@/components/BossBattle';
 import ActivityTimeline from '@/components/ActivityTimeline';
+import MusicPlayer from '@/components/MusicPlayer';
 import ThemeToggle from '@/components/ThemeToggle';
 import OfflineBanner, { useOnlineStatus } from '@/components/OfflineBanner';
+
+
 
 type TabType = 'dashboard' | 'quests' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
 
@@ -519,19 +525,12 @@ export default function Dashboard() {
     }
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-ink-950">
-        <div className="space-y-4 w-full max-w-md text-center">
-          <div className="loading-skeleton w-20 h-20 rounded-2xl mx-auto" />
-          <div className="loading-skeleton h-6 w-48 rounded-lg mx-auto" />
-          <div className="loading-skeleton h-4 w-64 rounded-lg mx-auto" />
-        </div>
-      </div>
-    );
-  }
+  const currentProfile: Profile =
+    profile ||
+    loadLocalProfile(user?.user_metadata?.username || user?.email?.split('@')[0] || 'Hero');
 
   const NAV_ITEMS: Array<{ id: TabType; label: string; icon: typeof LayoutDashboard }> = [
+
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'quests', label: 'Quest Board', icon: Target },
     { id: 'boss', label: 'Realm Raid', icon: Flame },
@@ -550,8 +549,8 @@ export default function Dashboard() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between">
+      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800/80 shadow-ios-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between min-h-[68px]">
           {/* Logo Brand */}
           <div
             className="flex items-center gap-3 cursor-pointer select-none"
@@ -561,24 +560,24 @@ export default function Dashboard() {
               <Swords className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <h1 className="font-heading text-base font-extrabold text-ink-200 leading-none tracking-tight">
+              <div className="flex items-center gap-2">
+                <h1 className="font-heading text-base sm:text-lg font-extrabold text-ink-200 leading-none tracking-tight">
                   LifeQuest
                 </h1>
                 {isDemoMode && (
-                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
                     LOCAL HERO
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-ink-400 mt-0.5 hidden sm:block font-medium">
+              <p className="text-[11px] text-ink-400 mt-1 hidden sm:block font-medium">
                 Gamified RPG Productivity System
               </p>
             </div>
           </div>
 
           {/* Desktop Navigation Menu Bar */}
-          <nav className="hidden lg:flex items-center gap-1 bg-ink-900/80 border border-ink-800/80 p-1 rounded-2xl shadow-inner">
+          <nav className="hidden lg:flex items-center gap-1.5 bg-ink-900/80 border border-ink-800/80 p-1.5 rounded-2xl shadow-inner">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -603,21 +602,9 @@ export default function Dashboard() {
             })}
           </nav>
 
-          {/* Controls, Audio, Theme, Profile */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <button
-              type="button"
-              onClick={toggleAudio}
-              className={`p-2 rounded-xl border transition-all text-xs flex items-center gap-1 ${
-                isMuted
-                  ? 'bg-ink-850 border-ink-800 text-ink-500'
-                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              }`}
-              title={isMuted ? 'Unmute sound effects' : 'Mute sound effects'}
-              aria-label="Toggle Sound"
-            >
-              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-            </button>
+          {/* Controls, Music Player, Theme, Profile */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
+            <MusicPlayer onToast={showToast} />
 
             <ThemeToggle />
 
@@ -627,7 +614,7 @@ export default function Dashboard() {
                 soundManager.playClick();
                 signOut();
               }}
-              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3"
+              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm"
               aria-label="Sign out"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -638,13 +625,14 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="lg:hidden btn-ghost p-2"
+              className="lg:hidden btn-ghost p-2 rounded-2xl"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
+
 
         {/* Mobile Navigation Drawer */}
         <AnimatePresence>
@@ -691,7 +679,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
               {/* Sidebar: Character Panel */}
               <div className="space-y-6">
-                <CharacterPanel profile={profile} inventory={inventory} />
+                <CharacterPanel profile={currentProfile} inventory={inventory} />
 
                 {/* Boss Battle Glance Card */}
                 <div
@@ -760,7 +748,7 @@ export default function Dashboard() {
           <div className="max-w-3xl mx-auto">
             <BossBattle
               quests={quests}
-              profile={profile}
+              profile={currentProfile}
               onClaimVictoryBonus={handleClaimBossBonus}
             />
           </div>
@@ -768,13 +756,13 @@ export default function Dashboard() {
 
         {activeTab === 'chronicles' && (
           <div className="max-w-4xl mx-auto">
-            <ActivityTimeline quests={quests} profile={profile} />
+            <ActivityTimeline quests={quests} profile={currentProfile} />
           </div>
         )}
 
         {activeTab === 'character' && (
           <div className="max-w-2xl mx-auto">
-            <CharacterPanel profile={profile} inventory={inventory} />
+            <CharacterPanel profile={currentProfile} inventory={inventory} />
           </div>
         )}
 
@@ -783,13 +771,14 @@ export default function Dashboard() {
             <Shop
               shopItems={shopItems}
               inventory={inventory}
-              profile={profile}
+              profile={currentProfile}
               onBuy={handleBuyItem}
               onToggleEquip={handleToggleEquip}
               loading={loadingShop}
             />
           </div>
         )}
+
 
         {activeTab === 'categories' && (
           <div className="max-w-5xl mx-auto">
