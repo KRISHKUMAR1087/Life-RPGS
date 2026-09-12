@@ -70,6 +70,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', uid)
         .maybeSingle();
 
+      if (error) {
+        console.error('Profile load error:', error.message);
+      }
+
+      if (!data) {
+        // Auto-create profile record if it doesn't exist yet
+        const defaultName = user?.user_metadata?.username || user?.email?.split('@')[0] || 'Hero';
+        const newProfile: Profile = {
+          id: uid,
+          username: defaultName,
+          level: 1,
+          xp: 0,
+          total_xp: 0,
+          gold: 100,
+          strength: 5,
+          intellect: 5,
+          vitality: 5,
+          charisma: 5,
+          dexterity: 5,
+          streak: 1,
+          longest_streak: 1,
+          last_active_date: new Date().toISOString().split('T')[0],
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+        };
+
+        await supabase.from('profiles').upsert(newProfile);
+        setProfile(newProfile);
+      } else {
+        setProfile(data as Profile);
+      }
+    } catch (err) {
+      console.error('Failed to load profile:', err);
+      // Fallback profile so user is never stuck on blank screen
+      const fallback = loadLocalProfile(user?.user_metadata?.username || 'Hero');
+      fallback.id = uid;
+      setProfile(fallback);
       const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
         setTimeout(() => resolve({ data: null, error: { message: 'Profile load timeout' } }), 2500)
       );
