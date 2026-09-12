@@ -90,19 +90,18 @@ export default function CharacterPanel({ profile }: CharacterPanelProps) {
         </div>
 
         <div className="bg-ink-850 rounded-2xl p-3 text-center border border-ink-800">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Flame className="w-4 h-4 text-ios-red" />
-            <span className="text-[11px] font-semibold text-ink-400">Streak</span>
+          <div className="flex items-center gap-1.5 mb-1">
+            <Flame className="w-4 h-4 text-flame-500" />
+            <span className="text-xs text-ink-400 font-medium">Streak</span>
           </div>
-          <p className="text-base font-extrabold text-ios-red tabular-nums">{profile.streak}</p>
+          <p className="text-base font-extrabold text-flame-500 tabular-nums">{profile.streak}</p>
         </div>
-
-        <div className="bg-ink-850 rounded-2xl p-3 text-center border border-ink-800">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Trophy className="w-4 h-4 text-ios-blue" />
-            <span className="text-[11px] font-semibold text-ink-400">Record</span>
+        <div className="bg-ink-850/50 rounded-2xl p-3 border border-ink-800">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Trophy className="w-4 h-4 text-azure-500" />
+            <span className="text-xs text-ink-400 font-medium">Best</span>
           </div>
-          <p className="text-base font-extrabold text-ios-blue tabular-nums">{profile.longest_streak}</p>
+          <p className="text-base font-extrabold text-azure-500 tabular-nums">{profile.longest_streak}</p>
         </div>
       </div>
 

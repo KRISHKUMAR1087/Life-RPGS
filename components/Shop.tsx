@@ -159,7 +159,7 @@ export default function Shop({ shopItems, inventory, profile, onBuy, loading }: 
                         </span>
 
                         {owned ? (
-                          <span className="flex items-center gap-1 text-xs text-ios-green font-semibold">
+                          <span className="flex items-center gap-1 text-xs text-emerald2-500 font-semibold">
                             <Check className="w-3.5 h-3.5" />
                             Owned
                           </span>
@@ -227,7 +227,7 @@ export default function Shop({ shopItems, inventory, profile, onBuy, loading }: 
                           <Icon className={`w-5 h-5 ${rarity.color}`} />
                         </div>
                         {inv.equipped && (
-                          <span className="text-[10px] uppercase tracking-wider font-bold text-ios-green">
+                          <span className="text-[10px] uppercase tracking-wider font-bold text-emerald2-500">
                             Equipped
                           </span>
                         )}
