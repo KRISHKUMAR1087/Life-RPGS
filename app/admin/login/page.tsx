@@ -13,8 +13,6 @@ import {
   EyeOff,
   Swords,
   ArrowLeft,
-  Sparkles,
-  CheckCircle2,
 } from 'lucide-react';
 import { useAdminAuth } from '@/context/AdminAuthContext';
 
@@ -51,12 +49,6 @@ export default function AdminLoginPage() {
     } else {
       router.push('/admin');
     }
-  }
-
-  function handleAutoFill() {
-    setEmail('admin@lifequest.realm');
-    setPasskey('admin123');
-    setError(null);
   }
 
   if (loading) {
@@ -102,19 +94,13 @@ export default function AdminLoginPage() {
             </p>
           </div>
 
-          {/* Quick Passkey Helper Box */}
-          <div className="bg-amber-500/10 border border-amber-500/30 p-3.5 rounded-2xl flex items-center justify-between text-xs">
-            <div>
-              <span className="font-bold text-amber-400 block">Default Admin Passkey:</span>
-              <span className="text-ink-300 font-mono">admin@lifequest.realm / admin123</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleAutoFill}
-              className="px-3 py-1 rounded-xl bg-amber-500 text-ink-950 font-bold hover:bg-amber-400 transition-all text-[11px] shrink-0"
-            >
-              Auto Fill
-            </button>
+          {/* Access Instructions Box */}
+          <div className="bg-ink-800/60 border border-ink-700 p-3.5 rounded-2xl text-xs text-ink-400 flex items-start gap-2.5">
+            <KeyRound className="w-4 h-4 text-amber-500/70 shrink-0 mt-0.5" />
+            <span>
+              Enter your admin email and the passkey configured in your server environment.
+              Contact the realm administrator for access credentials.
+            </span>
           </div>
 
           {/* Error alert */}

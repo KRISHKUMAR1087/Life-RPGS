@@ -7,5 +7,17 @@ export const metadata: Metadata = {
 };
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminAuthProvider>{children}</AdminAuthProvider>;
+  return (
+    <AdminAuthProvider>
+      {/* Demo Mode transparency banner */}
+      <div className="sticky top-0 z-50 flex items-center justify-center gap-2 px-4 py-2 bg-amber-500/95 text-ink-950 text-xs font-bold shadow-sm">
+        <span>⚠️ Demo Mode</span>
+        <span className="font-normal opacity-80">—</span>
+        <span className="font-normal opacity-80">
+          This portal manages local demo data only. Connect a real Supabase project for production database management.
+        </span>
+      </div>
+      {children}
+    </AdminAuthProvider>
+  );
 }
