@@ -6,8 +6,6 @@ import {
   Sword,
   Shield,
   Crown,
-  Lock,
-  Globe,
   Flame,
   Star,
   Copy,
@@ -77,8 +75,11 @@ export default function PublicProfileView({ username }: PublicProfileViewProps) 
       try {
         const { data, error } = await supabase
           .from('profiles')
-          .select('*')
+          .select(
+            'id, username, bio, country, level, xp, total_xp, gold, strength, intellect, vitality, charisma, dexterity, streak, longest_streak, avatar_url, created_at, is_public'
+          )
           .ilike('username', cleanName)
+          .eq('is_public', true)
           .maybeSingle();
 
         if (data) {
@@ -143,44 +144,9 @@ export default function PublicProfileView({ username }: PublicProfileViewProps) 
     );
   }
 
-  // Private profile check
-  if (profile.is_public === false) {
-    const countryInfo = getCountry(profile.country);
-    return (
-      <div className="min-h-screen bg-ink-950 flex flex-col items-center justify-center p-6 text-center">
-        <div className="max-w-md w-full p-8 rounded-3xl bg-ink-900 border border-amber-500/30 space-y-5 shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 inset-x-0 h-1 bg-amber-500" />
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 mx-auto text-3xl">
-            🔒
-          </div>
 
-          <div className="space-y-2">
-            <div className="flex items-center justify-center gap-2 text-xs text-ink-400">
-              <span>{countryInfo.flag}</span>
-              <span>{countryInfo.name}</span>
-            </div>
-            <h1 className="text-2xl font-bold text-ink-50 font-serif">{cleanName}</h1>
-            <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider">
-              {getRankTitle(profile.level)}
-            </p>
-          </div>
+  // Public profile card view (only reached if Supabase returned a public profile)
 
-          <div className="p-4 rounded-2xl bg-ink-950 border border-ink-800 text-ink-300 text-xs leading-relaxed">
-            This adventurer has set their profile to <span className="text-amber-400 font-bold">Private</span>. Hero stats and achievements are hidden from public view.
-          </div>
-
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-ink-800 border border-ink-700 text-ink-200 font-bold text-xs hover:bg-ink-750 transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" /> Enter LifeQuest Realm
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Public profile card view
   const countryInfo = getCountry(profile.country);
   const rankTitle = getRankTitle(profile.level);
   const platformRanks = calculatePlatformRanks(profile);

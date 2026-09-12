@@ -45,29 +45,34 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = passkey.trim();
 
-    // Default admin credentials check: admin@lifequest.realm / admin123 or secret key "admin"
-    if (
-      (cleanEmail === 'admin@lifequest.realm' && cleanPass === 'admin123') ||
-      cleanPass === 'admin' ||
-      cleanPass === 'admin123' ||
-      cleanPass === 'superadmin'
-    ) {
-      const user: AdminUser = {
-        id: 'admin-master',
-        email: cleanEmail || 'admin@lifequest.realm',
-        role: 'super_admin',
-        name: 'Master Realm Architect',
-        loggedInAt: new Date().toISOString(),
-      };
+    // Passkey is read from environment variable — never hardcoded in source.
+    // Set NEXT_PUBLIC_ADMIN_PASSKEY in your .env.local to enable admin access.
+    const configuredPasskey = process.env.NEXT_PUBLIC_ADMIN_PASSKEY;
 
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(user));
-      }
-      setAdminUser(user);
-      return { error: null };
+    if (!configuredPasskey) {
+      return {
+        error:
+          'Admin portal is not configured. Set NEXT_PUBLIC_ADMIN_PASSKEY in your environment.',
+      };
     }
 
-    return { error: 'Invalid admin email or passkey. Access denied.' };
+    if (cleanEmail !== 'admin@lifequest.realm' || cleanPass !== configuredPasskey) {
+      return { error: 'Invalid admin email or passkey. Access denied.' };
+    }
+
+    const user: AdminUser = {
+      id: 'admin-master',
+      email: cleanEmail,
+      role: 'super_admin',
+      name: 'Master Realm Architect',
+      loggedInAt: new Date().toISOString(),
+    };
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(ADMIN_STORAGE_KEY, JSON.stringify(user));
+    }
+    setAdminUser(user);
+    return { error: null };
   }
 
   function logoutAdmin() {
