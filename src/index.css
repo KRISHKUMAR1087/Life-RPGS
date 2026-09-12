@@ -1,0 +1,121 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background-color: #0a0a0f;
+    color: #e2e2ea;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .font-heading {
+    font-family: 'Cinzel', Georgia, serif;
+    letter-spacing: 0.02em;
+  }
+  *:focus-visible {
+    outline: 2px solid #fbbf24;
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #111118;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3d3d52;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #54546e;
+  }
+}
+
+@layer components {
+  .rpg-card {
+    background: linear-gradient(145deg, #161620 0%, #1c1c28 100%);
+    border: 1px solid #252535;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+  .rpg-card-hover {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+  .rpg-card-hover:hover {
+    border-color: #fbbf24;
+    box-shadow: 0 4px 24px rgba(251, 191, 36, 0.12), 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: #111118;
+    font-weight: 600;
+    padding: 0.625rem 1.5rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 12px rgba(245, 158, 11, 0.3);
+  }
+  .btn-primary:hover {
+    box-shadow: 0 4px 20px rgba(245, 158, 11, 0.5);
+    transform: translateY(-1px);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid #2f2f42;
+    color: #7a7a96;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+  }
+  .btn-ghost:hover {
+    border-color: #fbbf24;
+    color: #fbbf24;
+  }
+  .input-field {
+    background: #111118;
+    border: 1px solid #252535;
+    border-radius: 8px;
+    padding: 0.625rem 0.875rem;
+    color: #e2e2ea;
+    width: 100%;
+    transition: border-color 0.2s ease;
+  }
+  .input-field:focus {
+    outline: none;
+    border-color: #fbbf24;
+    box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+  }
+  .text-gold {
+    color: #fbbf24;
+  }
+  .text-shimmer {
+    background: linear-gradient(90deg, #fbbf24 0%, #fde68a 50%, #fbbf24 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 2.5s linear infinite;
+  }
+}
+
+.loading-skeleton {
+  background: linear-gradient(90deg, #161620 25%, #1c1c28 50%, #161620 75%);
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
