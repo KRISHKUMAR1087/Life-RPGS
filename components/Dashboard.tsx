@@ -24,6 +24,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import {
   supabase,
+  type Profile,
   type Quest,
   type ShopItem,
   type InventoryItem,
@@ -42,12 +43,14 @@ import {
   loadLocalQuests,
   saveLocalQuests,
   loadLocalInventory,
+  loadLocalProfile,
   completeLocalQuest,
   purchaseLocalItem,
   editLocalQuest,
   toggleEquipLocalItem,
   addLocalVictoryBonus,
 } from '@/lib/localStore';
+
 import { soundManager } from '@/lib/audio';
 import CharacterPanel from '@/components/CharacterPanel';
 import QuestBoard from '@/components/QuestBoard';
@@ -58,10 +61,17 @@ import LevelUpOverlay from '@/components/LevelUpOverlay';
 import FloatingRewards, { type FloatingReward } from '@/components/FloatingRewards';
 import BossBattle from '@/components/BossBattle';
 import ActivityTimeline from '@/components/ActivityTimeline';
+import MusicPlayer from '@/components/MusicPlayer';
 import ThemeToggle from '@/components/ThemeToggle';
 import OfflineBanner, { useOnlineStatus } from '@/components/OfflineBanner';
 
+<<<<<<< HEAD
 type TabType = 'dashboard' | 'quests' | 'progress' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
+=======
+
+
+type TabType = 'dashboard' | 'quests' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
 
 export default function Dashboard() {
   const { profile, user, isDemo, signOut, refreshProfile } = useAuth();
@@ -536,22 +546,24 @@ export default function Dashboard() {
     }
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-ink-950">
-        <div className="space-y-4 w-full max-w-md text-center">
-          <div className="loading-skeleton w-20 h-20 rounded-2xl mx-auto" />
-          <div className="loading-skeleton h-6 w-48 rounded-lg mx-auto" />
-          <div className="loading-skeleton h-4 w-64 rounded-lg mx-auto" />
-        </div>
-      </div>
-    );
-  }
+  const currentProfile: Profile =
+    profile ||
+    loadLocalProfile(user?.user_metadata?.username || user?.email?.split('@')[0] || 'Hero');
 
   const NAV_ITEMS: Array<{ id: TabType; label: string; icon: typeof LayoutDashboard }> = [
+<<<<<<< HEAD
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'quests', label: 'Quests', icon: Target },
     { id: 'progress', label: 'Progress', icon: TrendingUp },
+=======
+
+    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+    { id: 'quests', label: 'Quest Board', icon: Target },
+    { id: 'boss', label: 'Realm Raid', icon: Flame },
+    { id: 'chronicles', label: 'Chronicles', icon: History },
+    { id: 'shop', label: 'Merchant Armory', icon: ShoppingBag },
+    { id: 'character', label: 'Hero Sheet', icon: User },
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
     { id: 'categories', label: 'Categories', icon: Layers },
     { id: 'boss', label: 'Boss Raid', icon: Flame },
     { id: 'chronicles', label: 'Activity', icon: History },
@@ -568,8 +580,13 @@ export default function Dashboard() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Navigation Header */}
+<<<<<<< HEAD
       <header className="sticky top-0 z-40 ios-glass border-b border-ink-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 sm:h-16 flex items-center justify-between">
+=======
+      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800/80 shadow-ios-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between min-h-[68px]">
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
           {/* Logo Brand */}
           <div
             className="flex items-center gap-2.5 cursor-pointer select-none"
@@ -578,6 +595,7 @@ export default function Dashboard() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-sm shrink-0">
               <Swords className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
+<<<<<<< HEAD
             <div className="flex items-center gap-1.5">
               <h1 className="font-heading text-lg font-extrabold text-ink-200 leading-none tracking-tight">
                 LifeQuest
@@ -587,11 +605,31 @@ export default function Dashboard() {
                   LOCAL
                 </span>
               )}
+=======
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-heading text-base sm:text-lg font-extrabold text-ink-200 leading-none tracking-tight">
+                  LifeQuest
+                </h1>
+                {isDemoMode && (
+                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                    LOCAL HERO
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-ink-400 mt-1 hidden sm:block font-medium">
+                Gamified RPG Productivity System
+              </p>
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
             </div>
           </div>
 
           {/* Desktop Navigation Menu Bar */}
+<<<<<<< HEAD
           <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1 bg-ink-900/90 dark:bg-ink-900/80 border border-ink-800 p-1 rounded-2xl shadow-inner">
+=======
+          <nav className="hidden lg:flex items-center gap-1.5 bg-ink-900/80 border border-ink-800/80 p-1.5 rounded-2xl shadow-inner">
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -617,6 +655,7 @@ export default function Dashboard() {
             })}
           </nav>
 
+<<<<<<< HEAD
           {/* Controls, Audio, Theme, Logout */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             <button
@@ -632,6 +671,11 @@ export default function Dashboard() {
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
+=======
+          {/* Controls, Music Player, Theme, Profile */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
+            <MusicPlayer onToast={showToast} />
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
 
             <ThemeToggle />
 
@@ -642,9 +686,14 @@ export default function Dashboard() {
                 soundManager.playClick();
                 signOut();
               }}
+<<<<<<< HEAD
               className="p-2 rounded-xl border border-flame-500/30 bg-flame-500/10 text-flame-400 hover:bg-flame-500/20 hover:text-flame-300 transition-all focus-ring"
               title="Logout"
               aria-label="Logout"
+=======
+              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm"
+              aria-label="Sign out"
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
             >
               <LogOut className="w-4 h-4 text-flame-400" />
             </button>
@@ -653,14 +702,20 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
+<<<<<<< HEAD
               className="lg:hidden p-2 rounded-xl border border-ink-800 bg-ink-850 text-ink-300 hover:text-ink-100 focus-ring"
               aria-expanded={mobileMenuOpen}
               aria-label="Toggle navigation menu"
+=======
+              className="lg:hidden btn-ghost p-2 rounded-2xl"
+              aria-label="Toggle Navigation Menu"
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
+
 
         {/* Mobile Navigation Drawer */}
         <AnimatePresence>
@@ -714,8 +769,12 @@ export default function Dashboard() {
           >
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
+<<<<<<< HEAD
                 {/* Top Horizontal Character Panel Hero Banner */}
                 <CharacterPanel profile={profile} inventory={inventory} variant="horizontal" />
+=======
+                <CharacterPanel profile={currentProfile} inventory={inventory} />
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
 
                 {/* Dashboard Main Grid: Quests + Boss Glance */}
                 <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6">
@@ -814,6 +873,7 @@ export default function Dashboard() {
               </div>
             )}
 
+<<<<<<< HEAD
             {activeTab === 'boss' && (
               <div className="max-w-3xl mx-auto">
                 <BossBattle
@@ -868,6 +928,61 @@ export default function Dashboard() {
             )}
           </motion.div>
         </AnimatePresence>
+=======
+        {activeTab === 'boss' && (
+          <div className="max-w-3xl mx-auto">
+            <BossBattle
+              quests={quests}
+              profile={currentProfile}
+              onClaimVictoryBonus={handleClaimBossBonus}
+            />
+          </div>
+        )}
+
+        {activeTab === 'chronicles' && (
+          <div className="max-w-4xl mx-auto">
+            <ActivityTimeline quests={quests} profile={currentProfile} />
+          </div>
+        )}
+
+        {activeTab === 'character' && (
+          <div className="max-w-2xl mx-auto">
+            <CharacterPanel profile={currentProfile} inventory={inventory} />
+          </div>
+        )}
+
+        {activeTab === 'shop' && (
+          <div className="max-w-4xl mx-auto">
+            <Shop
+              shopItems={shopItems}
+              inventory={inventory}
+              profile={currentProfile}
+              onBuy={handleBuyItem}
+              onToggleEquip={handleToggleEquip}
+              loading={loadingShop}
+            />
+          </div>
+        )}
+
+
+        {activeTab === 'categories' && (
+          <div className="max-w-5xl mx-auto">
+            <CategoryManager
+              quests={quests}
+              customCategories={customCategories}
+              onAddCategory={handleAddCustomCategory}
+              onDeleteCategory={handleDeleteCustomCategory}
+              onSelectCategoryFilter={(catKey) => {
+                setCategoryFilterFromManager(catKey);
+                setActiveTab('quests');
+              }}
+              onCompleteQuest={handleCompleteQuest}
+              onDeleteQuest={handleDeleteQuest}
+              completingId={completingId}
+            />
+          </div>
+        )}
+>>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
       </main>
 
       {/* Level up overlay */}
