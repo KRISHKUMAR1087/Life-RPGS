@@ -70,11 +70,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', uid)
         .maybeSingle();
 
-      if (error) {
-        console.error('Profile load error:', error.message);
-      }
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: { message: 'Profile load timeout' } }), 2500)
+      );
 
-      if (!data) {
+      const { data, error } = (await Promise.race([profilePromise, timeoutPromise])) as {
+        data: Profile | null;
+        error: { message: string } | null;
+      };
+
+      if (error || !data) {
         // Auto-create profile record if it doesn't exist yet
         const defaultName = user?.user_metadata?.username || user?.email?.split('@')[0] || 'Hero';
         const newProfile: Profile = {
@@ -101,28 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setProfile(data as Profile);
       }
-    } catch (err) {
-      console.error('Failed to load profile:', err);
-      // Fallback profile so user is never stuck on blank screen
-      const fallback = loadLocalProfile(user?.user_metadata?.username || 'Hero');
-      fallback.id = uid;
-      setProfile(fallback);
-      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
-        setTimeout(() => resolve({ data: null, error: { message: 'Profile load timeout' } }), 2500)
-      );
-
-      const { data, error } = (await Promise.race([profilePromise, timeoutPromise])) as {
-        data: Profile | null;
-        error: { message: string } | null;
-      };
-
-      if (error || !data) {
-        // Fallback to local profile
-        const p = loadLocalProfile();
-        setProfile({ ...p, id: uid });
-        return;
-      }
-      setProfile(data as Profile);
     } catch (err) {
       console.error('Failed to load profile:', err);
       const p = loadLocalProfile();
