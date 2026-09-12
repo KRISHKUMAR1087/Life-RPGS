@@ -66,7 +66,22 @@ export default function Dashboard() {
   const isDemoMode = isDemo || user?.id === 'demo-hero';
 
   // Navigation tab state
-  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [activeTab, setActiveTabState] = useState<TabType>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('life_rpg_active_tab') as TabType;
+      if (saved && ['dashboard', 'quests', 'boss', 'chronicles', 'character', 'shop', 'categories'].includes(saved)) {
+        return saved;
+      }
+    }
+    return 'dashboard';
+  });
+
+  const setActiveTab = (tab: TabType) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('life_rpg_active_tab', tab);
+    }
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
 
