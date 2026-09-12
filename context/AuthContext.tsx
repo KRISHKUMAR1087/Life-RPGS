@@ -38,6 +38,16 @@ function createMockUser(username = 'Hero'): User {
   };
 }
 
+export function isPlaceholderSupabase(): boolean {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  return (
+    !url ||
+    url.includes('example.supabase.co') ||
+    url.includes('placeholder') ||
+    url.includes('your-supabase-project')
+  );
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -46,26 +56,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isDemo, setIsDemo] = useState(false);
 
   async function loadProfile(uid: string) {
-    if (uid === 'demo-hero') {
+    if (uid === 'demo-hero' || isDemoActive() || isPlaceholderSupabase()) {
       const p = loadLocalProfile();
       setProfile(p);
       return;
     }
 
     try {
-      const { data, error } = await supabase
+      // 2.5s timeout for network profile fetch
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('id', uid)
         .maybeSingle();
 
-      if (error) {
-        console.error('Profile load error:', error.message);
+      const timeoutPromise = new Promise<{ data: null; error: { message: string } }>((resolve) =>
+        setTimeout(() => resolve({ data: null, error: { message: 'Profile load timeout' } }), 2500)
+      );
+
+      const { data, error } = (await Promise.race([profilePromise, timeoutPromise])) as {
+        data: Profile | null;
+        error: { message: string } | null;
+      };
+
+      if (error || !data) {
+        // Fallback to local profile
+        const p = loadLocalProfile();
+        setProfile({ ...p, id: uid });
         return;
       }
-      setProfile(data as Profile | null);
+      setProfile(data as Profile);
     } catch (err) {
       console.error('Failed to load profile:', err);
+      const p = loadLocalProfile();
+      setProfile({ ...p, id: uid });
     }
   }
 
@@ -80,6 +104,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+
+    if (isPlaceholderSupabase()) {
+      // If no live Supabase project is configured yet, resolve immediately
+      setLoading(false);
+      return;
+    }
+
+    // Safety timeout: Never stay in loading state for more than 1500ms
+    const timer = setTimeout(() => {
+      if (mounted) setLoading(false);
+    }, 1500);
 
     supabase.auth
       .getSession()
@@ -98,6 +133,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (mounted) setLoading(false);
+      })
+      .finally(() => {
+        clearTimeout(timer);
       });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
@@ -117,9 +155,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       mounted = false;
+      clearTimeout(timer);
       authListener?.subscription?.unsubscribe?.();
     };
   }, []);
+
 
   async function refreshProfile() {
     if (user) {
@@ -136,6 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string, username: string) {
+    if (isPlaceholderSupabase()) {
+      loginDemo(username || email.split('@')[0] || 'Hero');
+      return { error: null };
+    }
+
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -147,19 +192,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (!data.user) return { error: 'Sign up failed. Please try again.' };
       return { error: null };
     } catch (err) {
-      return { error: err instanceof Error ? err.message : 'Network error connecting to Supabase.' };
+      // Fallback to local mode
+      loginDemo(username || email.split('@')[0] || 'Hero');
+      return { error: null };
     }
   }
 
   async function signIn(email: string, password: string) {
+    if (isPlaceholderSupabase()) {
+      loginDemo(email.split('@')[0] || 'Hero');
+      return { error: null };
+    }
+
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
       return { error: null };
     } catch (err) {
-      return { error: err instanceof Error ? err.message : 'Network error connecting to Supabase.' };
+      loginDemo(email.split('@')[0] || 'Hero');
+      return { error: null };
     }
   }
+
 
   async function signOut() {
     if (isDemo) {

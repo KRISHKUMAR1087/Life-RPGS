@@ -22,6 +22,7 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import {
   supabase,
+  type Profile,
   type Quest,
   type ShopItem,
   type InventoryItem,
@@ -40,12 +41,14 @@ import {
   loadLocalQuests,
   saveLocalQuests,
   loadLocalInventory,
+  loadLocalProfile,
   completeLocalQuest,
   purchaseLocalItem,
   editLocalQuest,
   toggleEquipLocalItem,
   addLocalVictoryBonus,
 } from '@/lib/localStore';
+
 import { soundManager } from '@/lib/audio';
 import CharacterPanel from '@/components/CharacterPanel';
 import QuestBoard from '@/components/QuestBoard';
@@ -507,19 +510,12 @@ export default function Dashboard() {
     }
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-6 bg-ink-950">
-        <div className="space-y-4 w-full max-w-md text-center">
-          <div className="loading-skeleton w-20 h-20 rounded-2xl mx-auto" />
-          <div className="loading-skeleton h-6 w-48 rounded-lg mx-auto" />
-          <div className="loading-skeleton h-4 w-64 rounded-lg mx-auto" />
-        </div>
-      </div>
-    );
-  }
+  const currentProfile: Profile =
+    profile ||
+    loadLocalProfile(user?.user_metadata?.username || user?.email?.split('@')[0] || 'Hero');
 
   const NAV_ITEMS: Array<{ id: TabType; label: string; icon: typeof LayoutDashboard }> = [
+
     { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'quests', label: 'Quest Board', icon: Target },
     { id: 'boss', label: 'Realm Raid', icon: Flame },
@@ -668,7 +664,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
               {/* Sidebar: Character Panel */}
               <div className="space-y-6">
-                <CharacterPanel profile={profile} inventory={inventory} />
+                <CharacterPanel profile={currentProfile} inventory={inventory} />
 
                 {/* Boss Battle Glance Card */}
                 <div
@@ -737,7 +733,7 @@ export default function Dashboard() {
           <div className="max-w-3xl mx-auto">
             <BossBattle
               quests={quests}
-              profile={profile}
+              profile={currentProfile}
               onClaimVictoryBonus={handleClaimBossBonus}
             />
           </div>
@@ -745,13 +741,13 @@ export default function Dashboard() {
 
         {activeTab === 'chronicles' && (
           <div className="max-w-4xl mx-auto">
-            <ActivityTimeline quests={quests} profile={profile} />
+            <ActivityTimeline quests={quests} profile={currentProfile} />
           </div>
         )}
 
         {activeTab === 'character' && (
           <div className="max-w-2xl mx-auto">
-            <CharacterPanel profile={profile} inventory={inventory} />
+            <CharacterPanel profile={currentProfile} inventory={inventory} />
           </div>
         )}
 
@@ -760,13 +756,14 @@ export default function Dashboard() {
             <Shop
               shopItems={shopItems}
               inventory={inventory}
-              profile={profile}
+              profile={currentProfile}
               onBuy={handleBuyItem}
               onToggleEquip={handleToggleEquip}
               loading={loadingShop}
             />
           </div>
         )}
+
 
         {activeTab === 'categories' && (
           <div className="max-w-5xl mx-auto">
