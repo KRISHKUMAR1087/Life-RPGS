@@ -12,6 +12,8 @@ import {
   Layers,
   ArrowRight,
   AlertTriangle,
+  Filter,
+  Crown,
 } from 'lucide-react';
 import { soundManager } from '@/lib/audio';
 import type { Quest } from '@/lib/supabase';
@@ -20,6 +22,7 @@ import {
   CUSTOM_CATEGORY_ICONS,
   getCategory,
   getDifficulty,
+  calculateCategoryLevel,
   type CategoryConfig,
 } from '@/lib/rpg';
 
@@ -59,10 +62,19 @@ export default function CategoryManager({
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
 
+  // Category Scope Filter state ('all' | 'platform' | 'custom')
+  const [categoryTypeFilter, setCategoryTypeFilter] = useState<'all' | 'platform' | 'custom'>('all');
+
   // Custom Category Deletion state & modal
   const [deletingCatKey, setDeletingCatKey] = useState<string | null>(null);
 
   const allCategories = [...CATEGORIES, ...customCategories];
+
+  const filteredCategories = allCategories.filter((cat) => {
+    if (categoryTypeFilter === 'platform') return !cat.isCustom;
+    if (categoryTypeFilter === 'custom') return !!cat.isCustom;
+    return true;
+  });
 
   function handleCreateCategory(e: React.FormEvent) {
     e.preventDefault();
@@ -99,11 +111,12 @@ export default function CategoryManager({
     setDeletingCatKey(null);
   }
 
-  const categoryStats = allCategories.map((cat) => {
+  const categoryStats = filteredCategories.map((cat) => {
     const catQuests = quests.filter((q) => q.category === cat.key);
     const active = catQuests.filter((q) => q.status === 'active');
     const completed = catQuests.filter((q) => q.status === 'completed');
     const earnedXp = completed.reduce((sum, q) => sum + getDifficulty(q.difficulty).xp, 0);
+    const levelInfo = calculateCategoryLevel(earnedXp);
 
     return {
       category: cat,
@@ -111,6 +124,7 @@ export default function CategoryManager({
       activeQuests: active.length,
       completedQuests: completed.length,
       earnedXp,
+      levelInfo,
       quests: catQuests,
     };
   });
@@ -135,7 +149,7 @@ export default function CategoryManager({
               <h2 className="font-heading text-xl font-bold text-ink-200">Category Hub</h2>
             </div>
             <p className="text-xs text-ink-400 max-w-xl">
-              Organize your quests into specialized skill categories or create your own custom domains.
+              Organize your quests into specialized skill categories. Each category levels up separately as you earn XP in that domain!
             </p>
           </div>
           <button
@@ -145,6 +159,49 @@ export default function CategoryManager({
             aria-label="Add custom category"
           >
             <Plus className="w-4 h-4" /> Add Custom Category
+          </button>
+        </div>
+      </div>
+
+      {/* Category Scope Filter Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-ink-850 p-3 rounded-2xl border border-ink-800">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-amber-500" />
+          <span className="text-xs font-bold text-ink-300">Category Scope:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setCategoryTypeFilter('all')}
+            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-xs font-semibold transition-all focus-ring ${
+              categoryTypeFilter === 'all'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                : 'text-ink-400 hover:text-ink-200 bg-ink-900/50'
+            }`}
+          >
+            All Domains ({allCategories.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategoryTypeFilter('platform')}
+            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-xs font-semibold transition-all focus-ring ${
+              categoryTypeFilter === 'platform'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                : 'text-ink-400 hover:text-ink-200 bg-ink-900/50'
+            }`}
+          >
+            Platform Domains ({CATEGORIES.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setCategoryTypeFilter('custom')}
+            className={`flex-1 sm:flex-none px-3 py-1.5 rounded-xl text-xs font-semibold transition-all focus-ring ${
+              categoryTypeFilter === 'custom'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
+                : 'text-ink-400 hover:text-ink-200 bg-ink-900/50'
+            }`}
+          >
+            Your Categories ({customCategories.length})
           </button>
         </div>
       </div>
@@ -311,162 +368,116 @@ export default function CategoryManager({
 
       {/* Grid of category cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categoryStats.map(({ category, totalQuests, activeQuests, completedQuests, earnedXp }) => {
+        {categoryStats.map(({ category, totalQuests, activeQuests, completedQuests, earnedXp, levelInfo }) => {
           const Icon = category.icon;
           const isSelected = selectedCategoryKey === category.key;
 
           return (
             <div
               key={category.key}
-              className={`rpg-card p-5 border transition-all relative group cursor-pointer ${
+              className={`rpg-card p-5 border transition-all relative group cursor-pointer flex flex-col justify-between ${
                 isSelected
                   ? `${category.borderColor} shadow-lg ring-1 ring-gold-500/30`
                   : 'border-ink-800 hover:border-ink-700'
               }`}
               onClick={() => setSelectedCategoryKey(isSelected ? null : category.key)}
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-2xl ${category.bgColor} ${category.borderColor} border flex items-center justify-center`}
-                  >
-                    <Icon className={`w-5 h-5 ${category.textColor}`} />
+              <div>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className={`w-10 h-10 rounded-2xl ${category.bgColor} ${category.borderColor} border flex items-center justify-center flex-shrink-0`}
+                    >
+                      <Icon className={`w-5 h-5 ${category.textColor}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-heading text-sm font-bold text-ink-200 truncate">
+                          {category.label}
+                        </h3>
+                        {category.isCustom && (
+                          <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-gold-500/10 border border-gold-500/30 text-gold-400">
+                            Custom
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-ink-400 line-clamp-1">{category.description}</p>
+                    </div>
+                  </div>
+
+                  {category.isCustom && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeletingCatKey(category.key);
+                      }}
+                      className="text-ink-500 hover:text-flame-400 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg focus-ring shrink-0"
+                      title="Delete custom category"
+                      aria-label={`Delete custom category "${category.label}"`}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Per-Category Level Progress Bar */}
+                <div className="bg-ink-900/80 rounded-xl p-2.5 border border-ink-800/80 mb-3 space-y-1">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="font-extrabold text-amber-400 flex items-center gap-1">
+                      <Crown className="w-3 h-3 text-amber-500" /> Lvl {levelInfo.level} {levelInfo.title}
+                    </span>
+                    <span className="text-ink-400 font-medium tabular-nums">
+                      {levelInfo.currentXp} / {levelInfo.xpNeeded} XP
+                    </span>
+                  </div>
+                  <div className="h-2 bg-ink-950 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full rounded-full"
+                      style={{ backgroundColor: category.color }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${levelInfo.percent}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ink-800/60 text-center">
+                  <div>
+                    <p className="text-[10px] text-ink-400 uppercase tracking-wider font-semibold">Active</p>
+                    <p className="text-sm font-extrabold text-ink-200">{activeQuests}</p>
                   </div>
                   <div>
-                    <h3 className="font-heading text-sm font-bold text-ink-200 flex items-center gap-1.5">
-                      {category.label}
-                      {category.isCustom && (
-                        <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-gold-500/10 border border-gold-500/30 text-gold-400">
-                          Custom
-                        </span>
-                      )}
-                    </h3>
-                    <p className="text-[11px] text-ink-400 line-clamp-1">{category.description}</p>
+                    <p className="text-[10px] text-ink-400 uppercase tracking-wider font-semibold">Done</p>
+                    <p className="text-sm font-extrabold text-emerald2-400">{completedQuests}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-ink-400 uppercase tracking-wider font-semibold">XP Earned</p>
+                    <p className="text-sm font-extrabold text-azure-400">+{earnedXp}</p>
                   </div>
                 </div>
 
-                {category.isCustom && (
+                <div className="mt-3 flex items-center justify-between text-xs text-ink-400 font-medium">
+                  <span>{totalQuests} Total Quests</span>
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setDeletingCatKey(category.key);
+                      onSelectCategoryFilter(category.key);
                     }}
-                    className="text-ink-500 hover:text-flame-400 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg focus-ring"
-                    title="Delete custom category"
-                    aria-label={`Delete custom category "${category.label}"`}
+                    className="inline-flex items-center gap-1 text-gold-400 hover:text-gold-300 transition-colors focus-ring px-1 rounded"
+                    aria-label={`View quests in category "${category.label}"`}
                   >
-                    <Trash2 className="w-4 h-4" />
+                    View Quests <ArrowRight className="w-3 h-3" />
                   </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t border-ink-800/60 text-center">
-                <div>
-                  <p className="text-[10px] text-ink-400 uppercase tracking-wider font-semibold">Active</p>
-                  <p className="text-sm font-extrabold text-ink-200">{activeQuests}</p>
                 </div>
-                <div>
-                  <p className="text-[10px] text-ink-400 uppercase tracking-wider font-semibold">Done</p>
-                  <p className="text-sm font-extrabold text-emerald2-400">{completedQuests}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-ink-400 uppercase tracking-wider font-semibold">XP Earned</p>
-                  <p className="text-sm font-extrabold text-azure-400">+{earnedXp}</p>
-                </div>
-              </div>
-
-              <div className="mt-3 flex items-center justify-between text-xs text-ink-400 font-medium">
-                <span>{totalQuests} Total Quests</span>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onSelectCategoryFilter(category.key);
-                  }}
-                  className="inline-flex items-center gap-1 text-gold-400 hover:text-gold-300 transition-colors focus-ring px-1 rounded"
-                  aria-label={`View quests in category "${category.label}"`}
-                >
-                  View Quests <ArrowRight className="w-3 h-3" />
-                </button>
               </div>
             </div>
           );
         })}
       </div>
-
-      {/* Category Quest Detail Section if selected */}
-      {selectedStats && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rpg-card p-5 border border-ink-800 bg-ink-900 space-y-4"
-        >
-          <div className="flex items-center justify-between border-b border-ink-800 pb-3">
-            <h3 className="font-heading text-base font-bold text-ink-200 flex items-center gap-2">
-              Quests in &ldquo;{selectedStats.category.label}&rdquo; ({selectedStats.quests.length})
-            </h3>
-            <button
-              type="button"
-              onClick={() => setSelectedCategoryKey(null)}
-              className="text-xs text-ink-400 hover:text-ink-200 focus-ring px-2 py-1 rounded"
-              aria-label="Close category quest list"
-            >
-              Close
-            </button>
-          </div>
-
-          {selectedStats.quests.length === 0 ? (
-            <p className="text-xs text-ink-400 text-center py-6">No quests created under this category yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {selectedStats.quests.map((quest) => {
-                const difficulty = getDifficulty(quest.difficulty);
-                const isCompleted = quest.status === 'completed';
-                return (
-                  <div
-                    key={quest.id}
-                    className="p-3 rounded-xl border border-ink-800 bg-ink-850/60 flex items-center justify-between gap-3"
-                  >
-                    <div>
-                      <h4 className={`text-sm font-semibold ${isCompleted ? 'line-through text-ink-500' : 'text-ink-200'}`}>
-                        {quest.title}
-                      </h4>
-                      {quest.description && (
-                        <p className="text-xs text-ink-400">{quest.description}</p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-lg border ${difficulty.badge}`}>
-                        +{difficulty.xp} XP
-                      </span>
-                      {!isCompleted && (
-                        <button
-                          type="button"
-                          onClick={() => onCompleteQuest(quest)}
-                          disabled={completingId === quest.id}
-                          className="w-8 h-8 rounded-lg bg-emerald2-500/10 border border-emerald2-500/30 text-emerald2-400 flex items-center justify-center hover:bg-emerald2-500/20 focus-ring"
-                          aria-label={`Complete quest "${quest.title}"`}
-                        >
-                          <Check className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => onDeleteQuest(quest.id)}
-                        className="w-8 h-8 rounded-lg bg-ink-900 border border-ink-800 text-ink-400 flex items-center justify-center hover:text-flame-400 focus-ring"
-                        aria-label={`Delete quest "${quest.title}"`}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </motion.div>
-      )}
     </div>
   );
 }

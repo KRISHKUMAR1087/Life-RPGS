@@ -203,7 +203,6 @@
   animation: pulse-glow 2.5s infinite ease-in-out;
 }
 
-<<<<<<< HEAD
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
@@ -213,7 +212,6 @@
   }
 }
 
-=======
 @keyframes equalizer {
   0%, 100% {
     height: 3px;
@@ -222,6 +220,3 @@
     height: 14px;
   }
 }
-
-
->>>>>>> 106bbf4fcce222c3098097c7616ec63c38cbb141
