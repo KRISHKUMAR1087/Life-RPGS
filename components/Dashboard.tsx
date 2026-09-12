@@ -109,6 +109,15 @@ export default function Dashboard() {
   const [quests, setQuests] = useState<Quest[]>([]);
   const [shopItems, setShopItems] = useState<ShopItem[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [peerProfiles, setPeerProfiles] = useState<Array<{
+    id?: string;
+    total_xp: number;
+    strength: number;
+    intellect: number;
+    vitality: number;
+    charisma: number;
+    dexterity: number;
+  }>>([]);
   const [loadingQuests, setLoadingQuests] = useState(true);
   const [loadingShop, setLoadingShop] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
@@ -180,6 +189,22 @@ export default function Dashboard() {
       setCustomCategories(loaded);
     }
   }, [user]);
+
+  // Load peer profiles for rankings
+  useEffect(() => {
+    if (!user || isDemoMode) return;
+    async function fetchPeers() {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, total_xp, strength, intellect, vitality, charisma, dexterity');
+        if (data) setPeerProfiles(data);
+      } catch {
+        // fallback
+      }
+    }
+    fetchPeers();
+  }, [user, isDemoMode]);
 
   // Load quests
   const loadQuests = useCallback(async () => {
@@ -909,7 +934,7 @@ export default function Dashboard() {
 
             {activeTab === 'progress' && (
               <div className="max-w-5xl mx-auto">
-                <ProgressPage profile={currentProfile} quests={quests} customCategories={customCategories} />
+                <ProgressPage profile={currentProfile} quests={quests} customCategories={customCategories} peerProfiles={peerProfiles} />
               </div>
             )}
 
@@ -925,7 +950,7 @@ export default function Dashboard() {
 
             {activeTab === 'character' && (
               <div className="max-w-2xl mx-auto">
-                <CharacterPanel profile={currentProfile} inventory={inventory} />
+                <CharacterPanel profile={currentProfile} inventory={inventory} peerProfiles={peerProfiles} />
               </div>
             )}
 

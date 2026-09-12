@@ -27,7 +27,7 @@ import {
   type TavernBounty,
 } from '@/lib/rpg';
 import { soundManager } from '@/lib/audio';
-import { getDemoBounties } from '@/lib/localStore';
+import { getPlatformBounties } from '@/lib/localStore';
 
 type QuestBoardProps = {
   quests: Quest[];
@@ -91,7 +91,7 @@ export default function QuestBoard({
 
   const allCategories = useMemo(() => [...CATEGORIES, ...customCategories], [customCategories]);
 
-  const tavernBounties = useMemo(() => getDemoBounties(), []);
+  const tavernBounties = useMemo(() => getPlatformBounties(), []);
 
   const bountyTitles = useMemo(() => new Set(tavernBounties.map((tb) => tb.title.toLowerCase())), [tavernBounties]);
 

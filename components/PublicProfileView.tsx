@@ -32,6 +32,15 @@ type PublicProfileViewProps = {
 
 export default function PublicProfileView({ username }: PublicProfileViewProps) {
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [peerProfiles, setPeerProfiles] = useState<Array<{
+    id?: string;
+    total_xp: number;
+    strength: number;
+    intellect: number;
+    vitality: number;
+    charisma: number;
+    dexterity: number;
+  }>>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
 
@@ -84,6 +93,14 @@ export default function PublicProfileView({ username }: PublicProfileViewProps) 
 
         if (data) {
           setProfile(data as Profile);
+
+          // Fetch peer profiles for accurate ranking
+          const { data: peers } = await supabase
+            .from('profiles')
+            .select('id, total_xp, strength, intellect, vitality, charisma, dexterity')
+            .eq('is_public', true);
+
+          if (peers) setPeerProfiles(peers);
         } else {
           // Check local store
           const local = loadLocalProfile();
@@ -149,7 +166,8 @@ export default function PublicProfileView({ username }: PublicProfileViewProps) 
 
   const countryInfo = getCountry(profile.country);
   const rankTitle = getRankTitle(profile.level);
-  const platformRanks = calculatePlatformRanks(profile);
+  const isDemo = profile.id === 'public-preview' || profile.id === 'demo-hero';
+  const platformRanks = calculatePlatformRanks(profile, peerProfiles, { allowSyntheticBenchmarks: isDemo });
 
   return (
     <div className="min-h-screen bg-ink-950 py-12 px-4 sm:px-6">

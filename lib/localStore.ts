@@ -677,9 +677,9 @@ export function saveDemoCompetitors(competitors: RealmCompetitor[]): void {
   localStorage.setItem('life_rpg_demo_competitors', JSON.stringify(competitors));
 }
 
-export function getDemoBounties(): TavernBounty[] {
+export function getPlatformBounties(): TavernBounty[] {
   if (typeof window === 'undefined') return TAVERN_BOUNTIES;
-  const raw = localStorage.getItem('life_rpg_demo_bounties');
+  const raw = localStorage.getItem('life_rpg_platform_bounties') || localStorage.getItem('life_rpg_demo_bounties');
   if (raw) {
     try {
       return JSON.parse(raw);
@@ -687,13 +687,21 @@ export function getDemoBounties(): TavernBounty[] {
       // fallback
     }
   }
-  saveDemoBounties(TAVERN_BOUNTIES);
+  savePlatformBounties(TAVERN_BOUNTIES);
   return TAVERN_BOUNTIES;
 }
 
-export function saveDemoBounties(bounties: TavernBounty[]): void {
+export function savePlatformBounties(bounties: TavernBounty[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('life_rpg_demo_bounties', JSON.stringify(bounties));
+  localStorage.setItem('life_rpg_platform_bounties', JSON.stringify(bounties));
+}
+
+export function getDemoBounties(): TavernBounty[] {
+  return getPlatformBounties();
+}
+
+export function saveDemoBounties(bounties: TavernBounty[]): void {
+  savePlatformBounties(bounties);
 }
 
 
