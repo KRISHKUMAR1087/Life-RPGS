@@ -11,7 +11,9 @@ import {
   X,
   Layers,
   ArrowRight,
+  AlertTriangle,
 } from 'lucide-react';
+import { soundManager } from '@/lib/audio';
 import type { Quest } from '@/lib/supabase';
 import {
   CATEGORIES,
@@ -57,12 +59,16 @@ export default function CategoryManager({
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
 
+  // Custom Category Deletion state & modal
+  const [deletingCatKey, setDeletingCatKey] = useState<string | null>(null);
+
   const allCategories = [...CATEGORIES, ...customCategories];
 
   function handleCreateCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!label.trim()) return;
 
+    soundManager.playSaveSound();
     const key = label.trim().toLowerCase().replace(/\s+/g, '_');
     const colorPreset = COLOR_PRESETS[selectedColorIdx];
     const Icon = CUSTOM_CATEGORY_ICONS[selectedIconName] ?? Sparkles;
@@ -86,6 +92,13 @@ export default function CategoryManager({
     setShowAddForm(false);
   }
 
+  function handleConfirmDeleteCategory() {
+    if (!deletingCatKey) return;
+    onDeleteCategory(deletingCatKey);
+    if (selectedCategoryKey === deletingCatKey) setSelectedCategoryKey(null);
+    setDeletingCatKey(null);
+  }
+
   const categoryStats = allCategories.map((cat) => {
     const catQuests = quests.filter((q) => q.category === cat.key);
     const active = catQuests.filter((q) => q.status === 'active');
@@ -106,6 +119,11 @@ export default function CategoryManager({
     ? categoryStats.find((s) => s.category.key === selectedCategoryKey)
     : null;
 
+  const categoryPendingDelete = customCategories.find((c) => c.key === deletingCatKey);
+  const pendingDeleteQuestCount = categoryPendingDelete
+    ? quests.filter((q) => q.category === categoryPendingDelete.key).length
+    : 0;
+
   return (
     <div className="space-y-6">
       {/* Header banner */}
@@ -123,7 +141,8 @@ export default function CategoryManager({
           <button
             type="button"
             onClick={() => setShowAddForm(true)}
-            className="btn-primary flex items-center justify-center gap-2 text-sm"
+            className="btn-primary flex items-center justify-center gap-2 text-sm focus-ring"
+            aria-label="Add custom category"
           >
             <Plus className="w-4 h-4" /> Add Custom Category
           </button>
@@ -147,7 +166,8 @@ export default function CategoryManager({
               <button
                 type="button"
                 onClick={() => setShowAddForm(false)}
-                className="text-ink-400 hover:text-ink-200"
+                className="text-ink-400 hover:text-ink-200 focus-ring p-1 rounded-lg"
+                aria-label="Close create category modal"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -163,7 +183,7 @@ export default function CategoryManager({
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
                   placeholder="e.g. Finances, Language Learning, Meditation"
-                  className="input-field text-sm"
+                  className="input-field text-sm focus-ring"
                   required
                 />
               </div>
@@ -175,7 +195,7 @@ export default function CategoryManager({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Short summary of quests in this category"
-                  className="input-field text-sm"
+                  className="input-field text-sm focus-ring"
                 />
               </div>
 
@@ -191,11 +211,12 @@ export default function CategoryManager({
                         key={iconName}
                         type="button"
                         onClick={() => setSelectedIconName(iconName)}
-                        className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
+                        className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all focus-ring ${
                           isSelected
                             ? 'bg-amber-500/20 border-amber-500 text-amber-500'
                             : 'bg-ink-850 border-ink-800 text-ink-400 hover:border-ink-700'
                         }`}
+                        aria-label={`Select icon ${iconName}`}
                       >
                         <IconComp className="w-4 h-4" />
                       </button>
@@ -214,10 +235,11 @@ export default function CategoryManager({
                       type="button"
                       onClick={() => setSelectedColorIdx(idx)}
                       style={{ backgroundColor: preset.hex }}
-                      className={`w-7 h-7 rounded-full border-2 transition-all ${
+                      className={`w-7 h-7 rounded-full border-2 transition-all focus-ring ${
                         selectedColorIdx === idx ? 'border-white scale-110 shadow-md' : 'border-transparent opacity-80 hover:opacity-100'
                       }`}
                       title={preset.name}
+                      aria-label={`Select color preset ${preset.name}`}
                     />
                   ))}
                 </div>
@@ -227,15 +249,62 @@ export default function CategoryManager({
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="btn-ghost text-xs"
+                  className="btn-ghost text-xs focus-ring"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-primary text-xs flex items-center gap-1">
+                <button type="submit" className="btn-primary text-xs flex items-center gap-1 focus-ring">
                   <Check className="w-4 h-4" /> Save Category
                 </button>
               </div>
             </form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete Category Warning Confirmation Modal */}
+      <AnimatePresence>
+        {deletingCatKey && categoryPendingDelete && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            className="rpg-card p-5 border border-flame-500/50 bg-ink-900 shadow-2xl space-y-3"
+          >
+            <div className="flex items-center gap-2.5 text-flame-400">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <h3 className="font-heading text-sm font-bold text-ink-200">
+                Confirm Deleting Category &ldquo;{categoryPendingDelete.label}&rdquo;
+              </h3>
+            </div>
+
+            <p className="text-xs text-ink-300 font-normal leading-relaxed">
+              {pendingDeleteQuestCount > 0 ? (
+                <>
+                  <strong className="text-flame-400">{pendingDeleteQuestCount} quest(s)</strong> currently use this category label.
+                  Deleting this category will preserve the label on existing quests, but it will no longer appear in custom category filters or quest creation.
+                </>
+              ) : (
+                <>Are you sure you want to delete this custom category? This action cannot be undone.</>
+              )}
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeletingCatKey(null)}
+                className="btn-ghost text-xs focus-ring"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDeleteCategory}
+                className="px-4 py-2 bg-flame-500 hover:bg-flame-600 text-white font-bold rounded-xl text-xs flex items-center gap-1 focus-ring"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Confirm Delete Category
+              </button>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -281,11 +350,11 @@ export default function CategoryManager({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onDeleteCategory(category.key);
-                      if (selectedCategoryKey === category.key) setSelectedCategoryKey(null);
+                      setDeletingCatKey(category.key);
                     }}
-                    className="text-ink-500 hover:text-flame-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="text-ink-500 hover:text-flame-400 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg focus-ring"
                     title="Delete custom category"
+                    aria-label={`Delete custom category "${category.label}"`}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -315,7 +384,8 @@ export default function CategoryManager({
                     e.stopPropagation();
                     onSelectCategoryFilter(category.key);
                   }}
-                  className="inline-flex items-center gap-1 text-gold-400 hover:text-gold-300 transition-colors"
+                  className="inline-flex items-center gap-1 text-gold-400 hover:text-gold-300 transition-colors focus-ring px-1 rounded"
+                  aria-label={`View quests in category "${category.label}"`}
                 >
                   View Quests <ArrowRight className="w-3 h-3" />
                 </button>
@@ -339,7 +409,8 @@ export default function CategoryManager({
             <button
               type="button"
               onClick={() => setSelectedCategoryKey(null)}
-              className="text-xs text-ink-400 hover:text-ink-200"
+              className="text-xs text-ink-400 hover:text-ink-200 focus-ring px-2 py-1 rounded"
+              aria-label="Close category quest list"
             >
               Close
             </button>
@@ -374,7 +445,8 @@ export default function CategoryManager({
                           type="button"
                           onClick={() => onCompleteQuest(quest)}
                           disabled={completingId === quest.id}
-                          className="w-8 h-8 rounded-lg bg-emerald2-500/10 border border-emerald2-500/30 text-emerald2-400 flex items-center justify-center hover:bg-emerald2-500/20"
+                          className="w-8 h-8 rounded-lg bg-emerald2-500/10 border border-emerald2-500/30 text-emerald2-400 flex items-center justify-center hover:bg-emerald2-500/20 focus-ring"
+                          aria-label={`Complete quest "${quest.title}"`}
                         >
                           <Check className="w-4 h-4" />
                         </button>
@@ -382,7 +454,8 @@ export default function CategoryManager({
                       <button
                         type="button"
                         onClick={() => onDeleteQuest(quest.id)}
-                        className="w-8 h-8 rounded-lg bg-ink-900 border border-ink-800 text-ink-400 flex items-center justify-center hover:text-flame-400"
+                        className="w-8 h-8 rounded-lg bg-ink-900 border border-ink-800 text-ink-400 flex items-center justify-center hover:text-flame-400 focus-ring"
+                        aria-label={`Delete quest "${quest.title}"`}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
