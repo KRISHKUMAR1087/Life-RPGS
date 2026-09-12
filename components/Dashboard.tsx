@@ -12,7 +12,12 @@ import {
   Layers,
   User,
   ShoppingBag,
-  Plus,
+  Flame,
+  History,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -30,24 +35,40 @@ import {
   type CategoryKey,
   type DifficultyKey,
 } from '@/lib/rpg';
+import {
+  SEED_SHOP_ITEMS,
+  loadLocalQuests,
+  saveLocalQuests,
+  loadLocalInventory,
+  completeLocalQuest,
+  purchaseLocalItem,
+  editLocalQuest,
+  toggleEquipLocalItem,
+  addLocalVictoryBonus,
+} from '@/lib/localStore';
+import { soundManager } from '@/lib/audio';
 import CharacterPanel from '@/components/CharacterPanel';
 import QuestBoard from '@/components/QuestBoard';
 import Shop from '@/components/Shop';
 import CategoryManager from '@/components/CategoryManager';
 import LevelUpOverlay from '@/components/LevelUpOverlay';
 import FloatingRewards, { type FloatingReward } from '@/components/FloatingRewards';
+import BossBattle from '@/components/BossBattle';
+import ActivityTimeline from '@/components/ActivityTimeline';
 import ThemeToggle from '@/components/ThemeToggle';
 import OfflineBanner, { useOnlineStatus } from '@/components/OfflineBanner';
 
-type TabType = 'dashboard' | 'quests' | 'categories' | 'character' | 'shop';
+type TabType = 'dashboard' | 'quests' | 'boss' | 'chronicles' | 'character' | 'shop' | 'categories';
 
 export default function Dashboard() {
-  const { profile, user, signOut, refreshProfile } = useAuth();
+  const { profile, user, isDemo, signOut, refreshProfile } = useAuth();
   const isOnline = useOnlineStatus();
+  const isDemoMode = isDemo || user?.id === 'demo-hero';
 
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
 
   // Custom Categories state
   const [customCategories, setCustomCategories] = useState<CategoryConfig[]>([]);
@@ -72,6 +93,16 @@ export default function Dashboard() {
     toastTimer.current = setTimeout(() => setToast(null), 3000);
   }, []);
 
+  useEffect(() => {
+    setIsMuted(soundManager.isMuted());
+  }, []);
+
+  function toggleAudio() {
+    const nextMuted = soundManager.toggleMute();
+    setIsMuted(nextMuted);
+    showToast(nextMuted ? 'Audio sound effects muted.' : 'Audio sound effects unmuted.', 'success');
+  }
+
   // Load custom categories for user
   useEffect(() => {
     if (user?.id) {
@@ -83,6 +114,11 @@ export default function Dashboard() {
   // Load quests
   const loadQuests = useCallback(async () => {
     if (!user) return;
+    if (isDemoMode) {
+      setQuests(loadLocalQuests());
+      setLoadingQuests(false);
+      return;
+    }
     try {
       const { data, error } = await supabase
         .from('quests')
@@ -100,29 +136,39 @@ export default function Dashboard() {
     } finally {
       setLoadingQuests(false);
     }
-  }, [user, showToast]);
+  }, [user, isDemoMode, showToast]);
 
   // Load shop items
   useEffect(() => {
     if (!user) return;
+    if (isDemoMode) {
+      setShopItems(SEED_SHOP_ITEMS);
+      setLoadingShop(false);
+      return;
+    }
     (async () => {
       try {
         const { data } = await supabase
           .from('shop_items')
           .select('*')
           .order('price', { ascending: true });
-        setShopItems((data as ShopItem[]) ?? []);
+        setShopItems((data as ShopItem[]) ?? SEED_SHOP_ITEMS);
       } catch (err) {
         console.error('Error loading shop items:', err);
+        setShopItems(SEED_SHOP_ITEMS);
       } finally {
         setLoadingShop(false);
       }
     })();
-  }, [user]);
+  }, [user, isDemoMode]);
 
   // Load inventory
   const loadInventory = useCallback(async () => {
     if (!user) return;
+    if (isDemoMode) {
+      setInventory(loadLocalInventory());
+      return;
+    }
     try {
       const { data } = await supabase
         .from('inventory')
@@ -133,7 +179,7 @@ export default function Dashboard() {
     } catch (err) {
       console.error('Error loading inventory:', err);
     }
-  }, [user]);
+  }, [user, isDemoMode]);
 
   useEffect(() => {
     loadQuests();
@@ -164,17 +210,37 @@ export default function Dashboard() {
     category: CategoryKey;
     difficulty: DifficultyKey;
   }) {
-    if (!isOnline) {
+    if (!isOnline && !isDemoMode) {
       showToast('Cannot add quest while offline.', 'error');
       return;
     }
 
     const actionKey = `add-${data.title}`;
     if (inFlightAction.has(actionKey)) return;
-
     setInFlightAction((prev) => new Set(prev).add(actionKey));
 
     try {
+      if (isDemoMode) {
+        const current = loadLocalQuests();
+        const newQuest: Quest = {
+          id: `quest-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          user_id: user?.id ?? 'demo-hero',
+          title: data.title,
+          description: data.description || null,
+          category: data.category,
+          difficulty: data.difficulty,
+          status: 'active',
+          completed_at: null,
+          quest_date: new Date().toISOString().split('T')[0],
+          created_at: new Date().toISOString(),
+        };
+        const updated = [newQuest, ...current];
+        saveLocalQuests(updated);
+        setQuests(updated);
+        showToast('Quest accepted!', 'success');
+        return;
+      }
+
       const { error } = await supabase.from('quests').insert({
         title: data.title,
         description: data.description || null,
@@ -197,8 +263,41 @@ export default function Dashboard() {
     }
   }
 
+  async function handleEditQuest(updatedQuest: Quest) {
+    if (!isOnline && !isDemoMode) {
+      showToast('Cannot edit quest while offline.', 'error');
+      return;
+    }
+
+    try {
+      if (isDemoMode) {
+        editLocalQuest(updatedQuest);
+        setQuests((prev) => prev.map((q) => (q.id === updatedQuest.id ? updatedQuest : q)));
+        showToast('Quest updated!', 'success');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('quests')
+        .update({
+          title: updatedQuest.title,
+          description: updatedQuest.description,
+          category: updatedQuest.category,
+          difficulty: updatedQuest.difficulty,
+        })
+        .eq('id', updatedQuest.id);
+
+      if (error) throw error;
+      await loadQuests();
+      showToast('Quest updated!', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update quest.', 'error');
+      throw err;
+    }
+  }
+
   async function handleCompleteQuest(quest: Quest) {
-    if (!isOnline) {
+    if (!isOnline && !isDemoMode) {
       showToast('Cannot complete quest while offline.', 'error');
       return;
     }
@@ -217,13 +316,19 @@ export default function Dashboard() {
     );
 
     try {
-      const { data, error } = await supabase.rpc('complete_quest', {
-        p_quest_id: quest.id,
-      });
+      let result: CompleteQuestResult;
 
-      if (error) throw error;
-      const result = data as CompleteQuestResult;
-      if (result.error) throw new Error(result.error);
+      if (isDemoMode) {
+        result = completeLocalQuest(quest.id);
+      } else {
+        const { data, error } = await supabase.rpc('complete_quest', {
+          p_quest_id: quest.id,
+        });
+
+        if (error) throw error;
+        result = data as CompleteQuestResult;
+        if (result.error) throw new Error(result.error);
+      }
 
       await refreshProfile();
 
@@ -260,7 +365,7 @@ export default function Dashboard() {
   }
 
   async function handleDeleteQuest(id: string) {
-    if (!isOnline) {
+    if (!isOnline && !isDemoMode) {
       showToast('Cannot abandon quest while offline.', 'error');
       return;
     }
@@ -272,6 +377,14 @@ export default function Dashboard() {
     setQuests((prev) => prev.filter((q) => q.id !== id));
 
     try {
+      if (isDemoMode) {
+        const current = loadLocalQuests();
+        const updated = current.filter((q) => q.id !== id);
+        saveLocalQuests(updated);
+        showToast('Quest abandoned.', 'success');
+        return;
+      }
+
       const { error } = await supabase.from('quests').delete().eq('id', id);
       if (error) throw error;
       showToast('Quest abandoned.', 'success');
@@ -287,9 +400,9 @@ export default function Dashboard() {
     }
   }
 
-  // Shop Handler
+  // Shop & Equip Handlers
   async function handleBuyItem(item: ShopItem) {
-    if (!isOnline) {
+    if (!isOnline && !isDemoMode) {
       showToast('Cannot purchase item while offline.', 'error');
       return;
     }
@@ -298,10 +411,18 @@ export default function Dashboard() {
     if (inFlightAction.has(actionKey)) return;
 
     setInFlightAction((prev) => new Set(prev).add(actionKey));
-
     const previousInventory = [...inventory];
 
     try {
+      if (isDemoMode) {
+        const result = purchaseLocalItem(item.id);
+        if (result.error) throw new Error(result.error);
+
+        await Promise.all([refreshProfile(), loadInventory()]);
+        showToast(`Purchased ${item.name}!`, 'success');
+        return;
+      }
+
       const { data, error } = await supabase.rpc('purchase_item', {
         p_item_id: item.id,
       });
@@ -324,6 +445,65 @@ export default function Dashboard() {
     }
   }
 
+  async function handleToggleEquip(invItem: InventoryItem) {
+    if (isDemoMode) {
+      toggleEquipLocalItem(invItem.id);
+      await loadInventory();
+      showToast(
+        invItem.equipped
+          ? `Unequipped ${invItem.shop_items?.name}`
+          : `Equipped ${invItem.shop_items?.name}!`,
+        'success'
+      );
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('inventory')
+        .update({ equipped: !invItem.equipped })
+        .eq('id', invItem.id);
+
+      if (error) throw error;
+      await loadInventory();
+      showToast(
+        invItem.equipped
+          ? `Unequipped ${invItem.shop_items?.name}`
+          : `Equipped ${invItem.shop_items?.name}!`,
+        'success'
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update equipment.', 'error');
+    }
+  }
+
+  async function handleClaimBossBonus(bonus: { xp: number; gold: number }) {
+    if (isDemoMode) {
+      addLocalVictoryBonus(bonus);
+      await refreshProfile();
+      showToast(`Claimed +${bonus.xp} XP and +${bonus.gold} Gold!`, 'success');
+      return;
+    }
+
+    try {
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            total_xp: (profile?.total_xp || 0) + bonus.xp,
+            gold: (profile?.gold || 0) + bonus.gold,
+          })
+          .eq('id', user.id);
+
+        if (error) throw error;
+        await refreshProfile();
+        showToast(`Claimed +${bonus.xp} XP and +${bonus.gold} Gold!`, 'success');
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to claim spoils.', 'error');
+    }
+  }
+
   if (!profile) {
     return (
       <div className="min-h-screen flex items-center justify-center p-6 bg-ink-950">
@@ -337,37 +517,53 @@ export default function Dashboard() {
   }
 
   const NAV_ITEMS: Array<{ id: TabType; label: string; icon: typeof LayoutDashboard }> = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
     { id: 'quests', label: 'Quest Board', icon: Target },
+    { id: 'boss', label: 'Realm Raid', icon: Flame },
+    { id: 'chronicles', label: 'Chronicles', icon: History },
+    { id: 'shop', label: 'Merchant Armory', icon: ShoppingBag },
+    { id: 'character', label: 'Hero Sheet', icon: User },
     { id: 'categories', label: 'Categories', icon: Layers },
-    { id: 'character', label: 'Character', icon: User },
-    { id: 'shop', label: 'Armory Shop', icon: ShoppingBag },
   ];
 
   return (
-    <div className="min-h-screen bg-ink-950 relative flex flex-col">
+    <div className="min-h-screen bg-ink-950 relative flex flex-col font-sans">
       <OfflineBanner />
 
-      {/* Ambient background */}
+      {/* Ambient background glows */}
       <div className="fixed inset-0 bg-radial-fade pointer-events-none" />
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-gold-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Navigation Header */}
       <header className="sticky top-0 z-40 ios-glass border-b border-ink-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between">
           {/* Logo Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-ios-sm">
+          <div
+            className="flex items-center gap-3 cursor-pointer select-none"
+            onClick={() => setActiveTab('dashboard')}
+          >
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-ios-sm">
               <Swords className="w-5 h-5 text-white" strokeWidth={2.2} />
             </div>
             <div>
-              <h1 className="font-heading text-base font-extrabold text-ink-200 leading-none">LifeQuest</h1>
-              <p className="text-[11px] text-ink-500 mt-0.5 hidden sm:block">RPG Productivity Engine</p>
+              <div className="flex items-center gap-1.5">
+                <h1 className="font-heading text-base font-extrabold text-ink-200 leading-none tracking-tight">
+                  LifeQuest
+                </h1>
+                {isDemoMode && (
+                  <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                    LOCAL HERO
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-ink-400 mt-0.5 hidden sm:block font-medium">
+                Gamified RPG Productivity System
+              </p>
             </div>
           </div>
 
           {/* Desktop Navigation Menu Bar */}
-          <nav className="hidden md:flex items-center gap-1 bg-ink-900/80 border border-ink-800/80 p-1 rounded-2xl shadow-inner">
+          <nav className="hidden lg:flex items-center gap-1 bg-ink-900/80 border border-ink-800/80 p-1 rounded-2xl shadow-inner">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -375,47 +571,59 @@ export default function Dashboard() {
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => setActiveTab(item.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all relative ${
+                  onClick={() => {
+                    soundManager.playClick();
+                    setActiveTab(item.id);
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                     isActive
-                      ? 'bg-ink-800 text-gold-400 shadow-sm border border-gold-500/30'
+                      ? 'bg-ink-800 text-amber-400 shadow-sm border border-amber-500/30'
                       : 'text-ink-400 hover:text-ink-200 hover:bg-ink-850/50'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-3.5 h-3.5" />
                   <span>{item.label}</span>
                 </button>
               );
             })}
           </nav>
 
-          {/* Controls & Profile */}
-          <div className="flex items-center gap-3">
-            <div className="hidden lg:flex items-center gap-2 text-xs">
-              <span className="text-ink-400">Hero:</span>
-              <span className="font-semibold text-gold-400">{profile.username}</span>
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] font-bold">
-                Lvl {profile.level}
-              </span>
-            </div>
+          {/* Controls, Audio, Theme, Profile */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              onClick={toggleAudio}
+              className={`p-2 rounded-xl border transition-all text-xs flex items-center gap-1 ${
+                isMuted
+                  ? 'bg-ink-850 border-ink-800 text-ink-500'
+                  : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+              }`}
+              title={isMuted ? 'Unmute sound effects' : 'Mute sound effects'}
+              aria-label="Toggle Sound"
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
 
             <ThemeToggle />
 
             <button
               type="button"
-              onClick={signOut}
+              onClick={() => {
+                soundManager.playClick();
+                signOut();
+              }}
               className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3"
               aria-label="Sign out"
             >
               <LogOut className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Sign Out</span>
+              <span className="hidden sm:inline">Leave Realm</span>
             </button>
 
             {/* Mobile Menu Toggle Button */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="md:hidden btn-ghost p-2"
+              className="lg:hidden btn-ghost p-2"
               aria-label="Toggle Navigation Menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -430,7 +638,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden border-t border-ink-800 bg-ink-900 px-4 py-3 space-y-1"
+              className="lg:hidden border-t border-ink-800 bg-ink-900 px-4 py-3 space-y-1"
             >
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
@@ -440,12 +648,13 @@ export default function Dashboard() {
                     key={item.id}
                     type="button"
                     onClick={() => {
+                      soundManager.playClick();
                       setActiveTab(item.id);
                       setMobileMenuOpen(false);
                     }}
                     className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${
                       isActive
-                        ? 'bg-ink-800 text-gold-400 border border-gold-500/30'
+                        ? 'bg-ink-800 text-amber-400 border border-amber-500/30'
                         : 'text-ink-400 hover:text-ink-200'
                     }`}
                   >
@@ -462,47 +671,56 @@ export default function Dashboard() {
       {/* Main Tab Content */}
       <main className="relative max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 w-full">
         {activeTab === 'dashboard' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
-            {/* Sidebar Overview */}
-            <div className="space-y-6">
-              <CharacterPanel profile={profile} />
-              <div className="rpg-card p-5 border border-ink-800 bg-ink-900 space-y-3">
-                <h3 className="font-heading text-sm font-bold text-ink-200 flex items-center justify-between">
-                  <span>Quick Stats</span>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('character')}
-                    className="text-xs text-gold-400 hover:underline"
-                  >
-                    View All
-                  </button>
-                </h3>
-                <div className="grid grid-cols-2 gap-2 text-center text-xs">
-                  <div className="p-2.5 rounded-xl bg-ink-850 border border-ink-800">
-                    <p className="text-[10px] text-ink-400 uppercase font-semibold">Total Gold</p>
-                    <p className="font-extrabold text-gold-400 text-sm mt-0.5">{profile.gold}</p>
+          <div className="space-y-6">
+            {/* Top Overview Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
+              {/* Sidebar: Character Panel */}
+              <div className="space-y-6">
+                <CharacterPanel profile={profile} inventory={inventory} />
+
+                {/* Boss Battle Glance Card */}
+                <div
+                  onClick={() => {
+                    soundManager.playClick();
+                    setActiveTab('boss');
+                  }}
+                  className="rpg-card p-5 border border-flame-500/30 bg-gradient-to-br from-flame-500/10 via-ink-900 to-ink-950 rounded-3xl cursor-pointer hover:border-flame-500/50 transition-all shadow-ios-md group"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">🐉</span>
+                      <div>
+                        <h4 className="text-xs font-bold text-flame-400 uppercase tracking-wider">
+                          Daily Realm Raid
+                        </h4>
+                        <p className="text-sm font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
+                          Malakor the Sloth Wyrm
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-amber-400 font-bold group-hover:translate-x-0.5 transition-transform">
+                      Attack &rarr;
+                    </span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-ink-850 border border-ink-800">
-                    <p className="text-[10px] text-ink-400 uppercase font-semibold">Categories</p>
-                    <p className="font-extrabold text-azure-400 text-sm mt-0.5">
-                      {5 + customCategories.length}
-                    </p>
-                  </div>
+                  <p className="text-xs text-ink-400 font-normal">
+                    Complete quests to deal critical strikes and unlock the daily victory chest!
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Dashboard Main View */}
-            <div className="space-y-6">
-              <QuestBoard
-                quests={quests}
-                loading={loadingQuests}
-                customCategories={customCategories}
-                onAdd={handleAddQuest}
-                onComplete={handleCompleteQuest}
-                onDelete={handleDeleteQuest}
-                completingId={completingId}
-              />
+              {/* Main Board: Active Quests & QuestBoard */}
+              <div className="space-y-6">
+                <QuestBoard
+                  quests={quests}
+                  loading={loadingQuests}
+                  customCategories={customCategories}
+                  onAdd={handleAddQuest}
+                  onEdit={handleEditQuest}
+                  onComplete={handleCompleteQuest}
+                  onDelete={handleDeleteQuest}
+                  completingId={completingId}
+                />
+              </div>
             </div>
           </div>
         )}
@@ -515,9 +733,45 @@ export default function Dashboard() {
               customCategories={customCategories}
               initialCategoryFilter={categoryFilterFromManager}
               onAdd={handleAddQuest}
+              onEdit={handleEditQuest}
               onComplete={handleCompleteQuest}
               onDelete={handleDeleteQuest}
               completingId={completingId}
+            />
+          </div>
+        )}
+
+        {activeTab === 'boss' && (
+          <div className="max-w-3xl mx-auto">
+            <BossBattle
+              quests={quests}
+              profile={profile}
+              onClaimVictoryBonus={handleClaimBossBonus}
+            />
+          </div>
+        )}
+
+        {activeTab === 'chronicles' && (
+          <div className="max-w-4xl mx-auto">
+            <ActivityTimeline quests={quests} profile={profile} />
+          </div>
+        )}
+
+        {activeTab === 'character' && (
+          <div className="max-w-2xl mx-auto">
+            <CharacterPanel profile={profile} inventory={inventory} />
+          </div>
+        )}
+
+        {activeTab === 'shop' && (
+          <div className="max-w-4xl mx-auto">
+            <Shop
+              shopItems={shopItems}
+              inventory={inventory}
+              profile={profile}
+              onBuy={handleBuyItem}
+              onToggleEquip={handleToggleEquip}
+              loading={loadingShop}
             />
           </div>
         )}
@@ -539,24 +793,6 @@ export default function Dashboard() {
             />
           </div>
         )}
-
-        {activeTab === 'character' && (
-          <div className="max-w-2xl mx-auto">
-            <CharacterPanel profile={profile} />
-          </div>
-        )}
-
-        {activeTab === 'shop' && (
-          <div className="max-w-4xl mx-auto">
-            <Shop
-              shopItems={shopItems}
-              inventory={inventory}
-              profile={profile}
-              onBuy={handleBuyItem}
-              loading={loadingShop}
-            />
-          </div>
-        )}
       </main>
 
       {/* Level up overlay */}
@@ -573,10 +809,10 @@ export default function Dashboard() {
               initial={{ opacity: 0, y: 20, x: '-50%' }}
               animate={{ opacity: 1, y: 0, x: '-50%' }}
               exit={{ opacity: 0, y: 20, x: '-50%' }}
-              className={`fixed bottom-6 left-1/2 z-50 px-4 py-2.5 rounded-lg border backdrop-blur-md text-sm font-medium shadow-xl ${
+              className={`fixed bottom-6 left-1/2 z-50 px-4 py-2.5 rounded-2xl border backdrop-blur-md text-sm font-semibold shadow-2xl ${
                 toast.type === 'success'
-                  ? 'bg-emerald2-500/15 border-emerald2-500/40 text-emerald2-400'
-                  : 'bg-flame-500/15 border-flame-500/40 text-flame-400'
+                  ? 'bg-emerald2-500/20 border-emerald2-500/40 text-emerald2-300'
+                  : 'bg-flame-500/20 border-flame-500/40 text-flame-300'
               }`}
             >
               {toast.message}

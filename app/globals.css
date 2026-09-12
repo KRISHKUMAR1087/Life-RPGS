@@ -175,3 +175,26 @@
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  animation: shimmer 3s infinite linear;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(251, 191, 36, 0.45);
+  }
+}
+
+.animate-glow-pulse {
+  animation: pulse-glow 2.5s infinite ease-in-out;
+}
+

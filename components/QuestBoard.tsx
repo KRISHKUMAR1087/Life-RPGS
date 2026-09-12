@@ -13,6 +13,13 @@ import {
   SlidersHorizontal,
   ArrowUpDown,
   Sparkles,
+  Edit3,
+  BookmarkPlus,
+  Dumbbell,
+  Brain,
+  Heart,
+  Users,
+  Zap,
 } from 'lucide-react';
 import type { Quest } from '@/lib/supabase';
 import {
@@ -24,6 +31,7 @@ import {
   type CategoryKey,
   type DifficultyKey,
 } from '@/lib/rpg';
+import { soundManager } from '@/lib/audio';
 
 type QuestBoardProps = {
   quests: Quest[];
@@ -36,10 +44,64 @@ type QuestBoardProps = {
     category: CategoryKey;
     difficulty: DifficultyKey;
   }) => Promise<void>;
+  onEdit?: (quest: Quest) => Promise<void>;
   onComplete: (quest: Quest) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   completingId: string | null;
 };
+
+type TavernBounty = {
+  title: string;
+  description: string;
+  category: CategoryKey;
+  difficulty: DifficultyKey;
+  icon: string;
+};
+
+const TAVERN_BOUNTIES: TavernBounty[] = [
+  {
+    title: 'Morning 5km Run & Stretching',
+    description: 'Crush cardiovascular training and build stamina.',
+    category: 'strength',
+    difficulty: 'hard',
+    icon: '🏃',
+  },
+  {
+    title: '45-Min Deep Focus Sprint',
+    description: 'Zero distractions study or coding session.',
+    category: 'intellect',
+    difficulty: 'medium',
+    icon: '⚡',
+  },
+  {
+    title: 'Hydrate 2 Liters & Mindful Meditation',
+    description: 'Restore energy and calm the mind.',
+    category: 'vitality',
+    difficulty: 'easy',
+    icon: '💧',
+  },
+  {
+    title: 'Ship Code Feature & Git Commit',
+    description: 'Write clean code and deploy changes.',
+    category: 'dexterity',
+    difficulty: 'hard',
+    icon: '💻',
+  },
+  {
+    title: 'Read 20 Pages of Knowledge',
+    description: 'Expand your mind with books or literature.',
+    category: 'intellect',
+    difficulty: 'easy',
+    icon: '📖',
+  },
+  {
+    title: 'Praise a Peer or Connect with Friends',
+    description: 'Strengthen social bonds and camaraderie.',
+    category: 'charisma',
+    difficulty: 'medium',
+    icon: '🤝',
+  },
+];
 
 export default function QuestBoard({
   quests,
@@ -47,11 +109,16 @@ export default function QuestBoard({
   customCategories = [],
   initialCategoryFilter = null,
   onAdd,
+  onEdit,
   onComplete,
   onDelete,
   completingId,
 }: QuestBoardProps) {
   const [showForm, setShowForm] = useState(false);
+  const [showBounties, setShowBounties] = useState(false);
+  const [editingQuest, setEditingQuest] = useState<Quest | null>(null);
+
+  // Form State
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<CategoryKey>('strength');
@@ -72,17 +139,11 @@ export default function QuestBoard({
   const filteredAndSortedQuests = useMemo(() => {
     return quests
       .filter((q) => {
-        // Status filter
         if (statusFilter === 'active' && q.status !== 'active') return false;
         if (statusFilter === 'completed' && q.status !== 'completed') return false;
-
-        // Category filter
         if (categoryFilter !== 'all' && q.category !== categoryFilter) return false;
-
-        // Difficulty filter
         if (difficultyFilter !== 'all' && q.difficulty !== difficultyFilter) return false;
 
-        // Search query
         if (searchQuery.trim()) {
           const query = searchQuery.toLowerCase();
           const matchesTitle = q.title.toLowerCase().includes(query);
@@ -114,176 +175,269 @@ export default function QuestBoard({
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError(null);
-
     if (!title.trim()) {
-      setError('Quest title cannot be empty.');
+      setError('Please provide a quest title.');
       return;
     }
-
+    setError(null);
     setSubmitting(true);
+    soundManager.playClick();
+
     try {
-      await onAdd({
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        difficulty,
-      });
+      if (editingQuest && onEdit) {
+        await onEdit({
+          ...editingQuest,
+          title: title.trim(),
+          description: description.trim() || null,
+          category,
+          difficulty,
+        });
+        setEditingQuest(null);
+      } else {
+        await onAdd({
+          title: title.trim(),
+          description: description.trim(),
+          category,
+          difficulty,
+        });
+      }
       setTitle('');
       setDescription('');
-      setCategory('strength');
-      setDifficulty('medium');
       setShowForm(false);
     } catch {
-      setError('Failed to create quest. Please try again.');
+      // Error handled by parent toast
     } finally {
       setSubmitting(false);
     }
   }
 
-  const activeCount = quests.filter((q) => q.status === 'active').length;
-  const completedCount = quests.filter((q) => q.status === 'completed').length;
+  async function handleClaimBounty(bounty: TavernBounty) {
+    soundManager.playClick();
+    try {
+      await onAdd({
+        title: bounty.title,
+        description: bounty.description,
+        category: bounty.category,
+        difficulty: bounty.difficulty,
+      });
+    } catch {
+      // error handled by parent
+    }
+  }
+
+  function handleStartEdit(quest: Quest) {
+    soundManager.playClick();
+    setEditingQuest(quest);
+    setTitle(quest.title);
+    setDescription(quest.description || '');
+    setCategory(quest.category);
+    setDifficulty(quest.difficulty as DifficultyKey);
+    setShowForm(true);
+  }
 
   return (
-    <div className="space-y-5">
-      {/* Top Header & Accept Quest Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rpg-card p-5 border border-ink-800 bg-ink-900">
+    <div className="space-y-6">
+      {/* Header with Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-heading text-lg font-bold text-ink-200 flex items-center gap-2">
-            <Swords className="w-5 h-5 text-gold-400" /> Quest Board
-          </h2>
-          <p className="text-xs text-ink-400 mt-0.5">
-            Complete active challenges to gain XP, Gold, and level up your character stats.
-          </p>
+          <h2 className="font-heading text-xl font-bold text-ink-200">Quest Board</h2>
+          <p className="text-xs text-ink-400 font-medium">Accept tasks, defeat challenges, and level up</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowForm((prev) => !prev)}
-          className="btn-primary flex items-center justify-center gap-2 text-sm font-semibold rounded-2xl shadow-ios-sm shrink-0"
-        >
-          {showForm ? (
-            <>
-              <X className="w-4 h-4" /> Cancel
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4" /> Accept New Quest
-            </>
-          )}
-        </button>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              setShowBounties(!showBounties);
+            }}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-ios-sm ${
+              showBounties
+                ? 'bg-amber-500 text-ink-950 shadow-[0_0_15px_rgba(251,191,36,0.3)]'
+                : 'bg-ink-850 hover:bg-ink-800 text-amber-400 border border-amber-500/30'
+            }`}
+          >
+            <BookmarkPlus className="w-4 h-4" />
+            <span>Tavern Bounties</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              soundManager.playClick();
+              if (showForm && editingQuest) setEditingQuest(null);
+              setShowForm(!showForm);
+              if (!showForm) {
+                setTitle('');
+                setDescription('');
+              }
+            }}
+            className="btn-primary px-4 py-2 text-xs font-bold rounded-2xl flex items-center gap-1.5 shadow-ios-md"
+          >
+            {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+            <span>{showForm ? 'Cancel' : 'New Quest'}</span>
+          </button>
+        </div>
       </div>
 
-      {/* Add Quest Form Modal / Accordion */}
+      {/* Tavern Bounties Drawer */}
+      <AnimatePresence>
+        {showBounties && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="rpg-card p-4 sm:p-5 bg-gradient-to-br from-amber-500/10 via-ink-900 to-ink-950 border border-amber-500/30 rounded-3xl shadow-ios-lg">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <h3 className="text-sm font-bold text-amber-300">Tavern Bounty Board (1-Click Add)</h3>
+                </div>
+                <span className="text-[10px] font-semibold text-ink-400">Instantly accept popular quests</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+                {TAVERN_BOUNTIES.map((bounty, idx) => {
+                  const diff = getDifficulty(bounty.difficulty);
+                  const cat = getCategory(bounty.category);
+                  return (
+                    <div
+                      key={idx}
+                      className="bg-ink-850/80 hover:bg-ink-800 rounded-2xl p-3 border border-ink-700/60 flex flex-col justify-between transition-all group"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-lg">{bounty.icon}</span>
+                          <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded-md ${diff.badge}`}>
+                            {diff.label} (+{diff.xp} XP)
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
+                          {bounty.title}
+                        </h4>
+                        <p className="text-[10px] text-ink-400 line-clamp-2 mt-0.5 font-normal">
+                          {bounty.description}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleClaimBounty(bounty)}
+                        className="mt-3 w-full py-1.5 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1 transition-all"
+                      >
+                        <Plus className="w-3 h-3" /> Accept Bounty
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* New / Edit Quest Form */}
       <AnimatePresence>
         {showForm && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.25 }}
             className="overflow-hidden"
           >
-            <form onSubmit={handleSubmit} className="rpg-card p-5 sm:p-6 space-y-4 shadow-ios-md border border-gold-500/40" noValidate>
-              <h3 className="font-heading text-base font-bold text-ink-200">Construct Quest Parameters</h3>
+            <form
+              onSubmit={handleSubmit}
+              className="rpg-card p-5 sm:p-6 border border-amber-500/30 rounded-3xl space-y-4 shadow-ios-lg bg-ink-900"
+            >
+              <h3 className="text-sm font-bold text-ink-200 flex items-center gap-2">
+                <Swords className="w-4 h-4 text-amber-500" />
+                {editingQuest ? 'Edit Quest Details' : 'Forge a New Quest'}
+              </h3>
 
               {error && (
-                <div className="p-3 rounded-xl bg-flame-500/10 border border-flame-500/30 text-flame-400 text-xs font-medium">
+                <div className="text-xs text-flame-500 bg-flame-500/10 border border-flame-500/20 p-2.5 rounded-xl">
                   {error}
                 </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-ink-300 mb-1">
-                  Quest Objective <span className="text-flame-400">*</span>
-                </label>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-ink-300">Quest Title *</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Complete 30 min cardio workout, Read 20 pages of technical docs"
+                  placeholder="e.g. Conquer 50 Pushups or Complete React Chapter"
                   className="input-field text-sm"
-                  required
+                  disabled={submitting}
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-ink-300 mb-1">
-                  Description <span className="text-ink-500 font-normal">(optional details)</span>
-                </label>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-ink-300">Quest Notes / Lore (Optional)</label>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Additional sub-tasks, notes, or execution constraints..."
+                  placeholder="Add specific objectives, links, or notes..."
                   rows={2}
                   className="input-field text-sm resize-none"
+                  disabled={submitting}
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Category selector */}
-                <div>
-                  <label className="block text-xs font-semibold text-ink-300 mb-1">Target Category</label>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-ink-300">Attribute Category</label>
                   <select
                     value={category}
-                    onChange={(e) => setCategory(e.target.value as CategoryKey)}
-                    className="input-field text-sm bg-ink-850"
+                    onChange={(e) => setCategory(e.target.value)}
+                    className="input-field text-sm"
+                    disabled={submitting}
                   >
-                    {allCategories.map((cat) => (
-                      <option key={cat.key} value={cat.key}>
-                        {cat.label} {cat.isCustom ? '(Custom)' : ''}
+                    {allCategories.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {c.label} ({c.description})
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Difficulty selector */}
-                <div>
-                  <label className="block text-xs font-semibold text-ink-300 mb-1">Challenge Tier</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {DIFFICULTIES.map((diff) => {
-                      const isSelected = difficulty === diff.key;
-                      return (
-                        <button
-                          key={diff.key}
-                          type="button"
-                          onClick={() => setDifficulty(diff.key)}
-                          className={`px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all ${
-                            isSelected
-                              ? `${diff.border} bg-ink-800 ${diff.color}`
-                              : 'border-ink-800 bg-ink-850/50 text-ink-400 hover:border-ink-700'
-                          }`}
-                        >
-                          <span>{diff.label}</span>
-                          <span className="text-[10px] text-ink-500">+{diff.xp}XP</span>
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-ink-300">Difficulty Tier</label>
+                  <select
+                    value={difficulty}
+                    onChange={(e) => setDifficulty(e.target.value as DifficultyKey)}
+                    className="input-field text-sm"
+                    disabled={submitting}
+                  >
+                    {DIFFICULTIES.map((d) => (
+                      <option key={d.key} value={d.key}>
+                        {d.label} — +{d.xp} XP / +{d.gold} Gold
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
-                  className="btn-ghost text-xs"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingQuest(null);
+                  }}
+                  className="px-4 py-2 bg-ink-800 text-ink-300 rounded-xl text-xs font-semibold hover:bg-ink-700"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="btn-primary text-xs flex items-center gap-1.5"
+                  className="btn-primary px-5 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5"
                 >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" /> Binding...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-3.5 h-3.5" /> Accept Quest
-                    </>
-                  )}
+                  {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  {editingQuest ? 'Save Changes' : 'Accept Quest'}
                 </button>
               </div>
             </form>
@@ -291,136 +445,84 @@ export default function QuestBoard({
         )}
       </AnimatePresence>
 
-      {/* Filter Controls & Search Bar */}
-      <div className="rpg-card p-4 space-y-3 bg-ink-900 border border-ink-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          {/* Status Tabs */}
-          <div className="flex items-center gap-1 bg-ink-850 p-1 rounded-xl border border-ink-800">
-            <button
-              type="button"
-              onClick={() => setStatusFilter('active')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                statusFilter === 'active'
-                  ? 'bg-ink-800 text-ink-200 shadow-sm'
-                  : 'text-ink-400 hover:text-ink-200'
-              }`}
-            >
-              Active ({activeCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('completed')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                statusFilter === 'completed'
-                  ? 'bg-ink-800 text-emerald2-400 shadow-sm'
-                  : 'text-ink-400 hover:text-ink-200'
-              }`}
-            >
-              Completed ({completedCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setStatusFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                statusFilter === 'all'
-                  ? 'bg-ink-800 text-ink-200 shadow-sm'
-                  : 'text-ink-400 hover:text-ink-200'
-              }`}
-            >
-              All ({quests.length})
-            </button>
-          </div>
-
-          {/* Live Search Input */}
-          <div className="relative flex-1 max-w-xs">
-            <Search className="w-4 h-4 text-ink-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      {/* Filter and Search Bar */}
+      <div className="rpg-card p-4 rounded-2xl border border-ink-800 bg-ink-900 space-y-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {/* Search Box */}
+          <div className="relative flex-1 w-full">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search quests..."
-              className="input-field text-xs pl-9 py-1.5"
+              placeholder="Search active & completed quests..."
+              className="input-field pl-10 text-xs w-full"
             />
-            {searchQuery && (
+          </div>
+
+          {/* Status Tabs */}
+          <div className="flex p-1 bg-ink-850 rounded-xl border border-ink-800 w-full sm:w-auto self-stretch">
+            {(['active', 'completed', 'all'] as const).map((s) => (
               <button
+                key={s}
                 type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-500 hover:text-ink-200"
+                onClick={() => setStatusFilter(s)}
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all ${
+                  statusFilter === s
+                    ? 'bg-white dark:bg-zinc-800 text-amber-500 shadow-ios-sm'
+                    : 'text-ink-400 hover:text-ink-200'
+                }`}
               >
-                <X className="w-3.5 h-3.5" />
+                {s}
               </button>
-            )}
+            ))}
           </div>
         </div>
 
-        {/* Dropdown Filters & Sorting Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-ink-800/60 text-xs">
-          {/* Category Pill Filters */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setCategoryFilter('all')}
-              className={`px-2.5 py-1 rounded-lg border text-xs font-medium whitespace-nowrap transition-all ${
-                categoryFilter === 'all'
-                  ? 'bg-gold-500/10 border-gold-500/40 text-gold-400'
-                  : 'bg-ink-850 border-ink-800 text-ink-400 hover:border-ink-700'
-              }`}
+        {/* Category & Tier Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-ink-800 text-xs">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <SlidersHorizontal className="w-3.5 h-3.5 text-ink-400 mr-1" />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
             >
-              All Categories
-            </button>
-            {allCategories.map((cat) => {
-              const isSelected = categoryFilter === cat.key;
-              const Icon = cat.icon;
-              return (
-                <button
-                  key={cat.key}
-                  type="button"
-                  onClick={() => setCategoryFilter(cat.key)}
-                  className={`px-2.5 py-1 rounded-lg border text-xs font-medium flex items-center gap-1.5 whitespace-nowrap transition-all ${
-                    isSelected
-                      ? `${cat.bgColor} ${cat.borderColor} ${cat.textColor}`
-                      : 'bg-ink-850 border-ink-800 text-ink-400 hover:border-ink-700'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  {cat.label}
-                </button>
-              );
-            })}
+              <option value="all">All Categories</option>
+              {allCategories.map((c) => (
+                <option key={c.key} value={c.key}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={difficultyFilter}
+              onChange={(e) => setDifficultyFilter(e.target.value)}
+              className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
+            >
+              <option value="all">All Tiers</option>
+              {DIFFICULTIES.map((d) => (
+                <option key={d.key} value={d.key}>
+                  {d.label}
+                </option>
+              ))}
+            </select>
           </div>
 
-          {/* Difficulty & Sort Selectors */}
-          <div className="flex items-center gap-2 ml-auto">
-            <div className="flex items-center gap-1">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-ink-400" />
-              <select
-                value={difficultyFilter}
-                onChange={(e) => setDifficultyFilter(e.target.value)}
-                className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
-              >
-                <option value="all">All Tiers</option>
-                {DIFFICULTIES.map((d) => (
-                  <option key={d.key} value={d.key}>
-                    {d.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <ArrowUpDown className="w-3.5 h-3.5 text-ink-400" />
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
-                className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="xp_desc">XP (High to Low)</option>
-                <option value="xp_asc">XP (Low to High)</option>
-                <option value="title_asc">Title (A-Z)</option>
-              </select>
-            </div>
+          <div className="flex items-center gap-1">
+            <ArrowUpDown className="w-3.5 h-3.5 text-ink-400" />
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+              className="bg-ink-850 border border-ink-800 rounded-lg px-2 py-1 text-xs text-ink-300 focus:outline-none"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="xp_desc">XP (High to Low)</option>
+              <option value="xp_asc">XP (Low to High)</option>
+              <option value="title_asc">Title (A-Z)</option>
+            </select>
           </div>
         </div>
       </div>
@@ -439,7 +541,7 @@ export default function QuestBoard({
           </div>
           <p className="text-sm font-semibold text-ink-300">No quests match your current filter parameters.</p>
           <p className="text-xs text-ink-500">
-            Try adjusting your search query, status tab, or category filter above.
+            Accept a Tavern Bounty above or create your own custom quest!
           </p>
         </div>
       ) : (
@@ -474,13 +576,19 @@ export default function QuestBoard({
 
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className={`text-sm font-bold truncate ${isCompleted ? 'line-through text-ink-400' : 'text-ink-200'}`}>
+                        <h3
+                          className={`text-sm font-bold truncate ${
+                            isCompleted ? 'line-through text-ink-400' : 'text-ink-200'
+                          }`}
+                        >
                           {quest.title}
                         </h3>
                         <span className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold ${diffConfig.badge}`}>
-                          {diffConfig.label} (+{diffConfig.xp} XP)
+                          {diffConfig.label} (+{diffConfig.xp} XP / +{diffConfig.gold} G)
                         </span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold ${catConfig.bgColor} ${catConfig.borderColor} ${catConfig.textColor}`}>
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-md border font-semibold ${catConfig.bgColor} ${catConfig.borderColor} ${catConfig.textColor}`}
+                        >
                           {catConfig.label}
                         </span>
                       </div>
@@ -493,20 +601,34 @@ export default function QuestBoard({
 
                   <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
                     {!isCompleted ? (
-                      <button
-                        type="button"
-                        onClick={() => onComplete(quest)}
-                        disabled={isCompleting}
-                        className="px-3 py-1.5 rounded-xl bg-emerald2-500/10 border border-emerald2-500/30 text-emerald2-500 text-xs font-semibold flex items-center gap-1.5 hover:bg-emerald2-500/20 transition-all disabled:opacity-50"
-                        title="Complete Quest"
-                      >
-                        {isCompleting ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Check className="w-3.5 h-3.5" />
-                        )}
-                        Complete
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(quest)}
+                          className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-ink-200 hover:border-ink-700 transition-all"
+                          title="Edit quest"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundManager.playQuestComplete();
+                            onComplete(quest);
+                          }}
+                          disabled={isCompleting}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm"
+                          title="Complete Quest"
+                        >
+                          {isCompleting ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Check className="w-3.5 h-3.5" />
+                          )}
+                          Complete
+                        </button>
+                      </>
                     ) : (
                       <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
                         <Check className="w-3.5 h-3.5" /> Completed
@@ -515,7 +637,10 @@ export default function QuestBoard({
 
                     <button
                       type="button"
-                      onClick={() => onDelete(quest.id)}
+                      onClick={() => {
+                        soundManager.playClick();
+                        onDelete(quest.id);
+                      }}
                       className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30 transition-all"
                       title="Abandon quest"
                     >

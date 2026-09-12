@@ -2,12 +2,12 @@
 
 import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sword, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { Sword, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, Sparkles, Play } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
 
 export default function AuthScreen() {
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, loginDemo } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,6 +43,10 @@ export default function AuthScreen() {
       setError(result.error);
       setSubmitting(false);
     }
+  }
+
+  function handleQuickPlay() {
+    loginDemo(username.trim() || 'Hero');
   }
 
   return (
@@ -198,10 +202,20 @@ export default function AuthScreen() {
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
-                  className="flex items-center gap-2 text-xs font-medium text-flame-500 bg-flame-500/10 border border-flame-500/20 rounded-xl p-3"
+                  className="space-y-2"
                 >
-                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{error}</span>
+                  <div className="flex items-center gap-2 text-xs font-medium text-flame-500 bg-flame-500/10 border border-flame-500/20 rounded-xl p-3">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span>{error}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleQuickPlay}
+                    className="w-full py-2 px-3 text-xs font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-500 rounded-xl hover:bg-amber-500/25 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    Play in Instant Local Mode Instead
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -221,13 +235,34 @@ export default function AuthScreen() {
               )}
             </button>
           </form>
+
+          {/* Quick Play Divider */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-ink-800" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-ink-900 px-3 text-ink-400 font-medium">or play offline</span>
+            </div>
+          </div>
+
+          {/* Quick Play Demo Button */}
+          <button
+            type="button"
+            onClick={handleQuickPlay}
+            className="w-full py-2.5 px-4 bg-ink-850 hover:bg-ink-800 text-ink-200 border border-ink-700/60 rounded-2xl text-xs sm:text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 shadow-ios-sm group"
+          >
+            <Play className="w-4 h-4 text-amber-500 fill-amber-500 group-hover:scale-110 transition-transform" />
+            <span>Instant Quick Play (Local Hero)</span>
+          </button>
         </div>
 
         <div className="flex items-center justify-center gap-1.5 text-center text-ink-400 text-xs mt-6">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald2-500" />
-          <span>Synced across all your devices securely with Supabase</span>
+          <span>Local storage enabled & Supabase sync ready</span>
         </div>
       </motion.div>
     </div>
   );
 }
+
