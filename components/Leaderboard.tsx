@@ -28,6 +28,8 @@ import {
   type CategoryConfig,
 } from '@/lib/rpg';
 import { getDemoCompetitors, type RealmCompetitor } from '@/lib/localStore';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 type LeaderboardProps = {
   profile: Profile;
@@ -35,6 +37,9 @@ type LeaderboardProps = {
 };
 
 export default function Leaderboard({ profile, quests }: LeaderboardProps) {
+  const { isDemo } = useAuth();
+  const isDemoMode = isDemo || profile.id === 'demo-hero';
+
   // Mode tab: 'global' | 'category'
   const [leaderboardTab, setLeaderboardTab] = useState<'global' | 'category'>('global');
   // Domain category filter key (restricted to Platform Categories only as per requirements)
@@ -43,8 +48,49 @@ export default function Leaderboard({ profile, quests }: LeaderboardProps) {
   const [realmCompetitors, setRealmCompetitors] = useState<RealmCompetitor[]>([]);
 
   useEffect(() => {
-    setRealmCompetitors(getDemoCompetitors());
-  }, []);
+    if (isDemoMode) {
+      setRealmCompetitors(getDemoCompetitors());
+      return;
+    }
+
+    async function fetchRealCompetitors() {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, username, level, xp, total_xp, streak, country, avatar_url, strength, intellect, vitality, charisma, dexterity')
+          .eq('is_public', true)
+          .order('total_xp', { ascending: false })
+          .limit(50);
+
+        if (error || !data) return;
+
+        const competitors: RealmCompetitor[] = data
+          .filter((p) => p.id !== profile.id)
+          .map((p) => ({
+            id: p.id,
+            username: p.username || 'Hero',
+            avatar: p.avatar_url || '🛡️',
+            baseLevel: p.level || 1,
+            baseXp: p.total_xp || 0,
+            streak: p.streak || 0,
+            country: p.country || 'US',
+            categoryXps: {
+              strength: (p.strength || 0) * 100,
+              intellect: (p.intellect || 0) * 100,
+              vitality: (p.vitality || 0) * 100,
+              charisma: (p.charisma || 0) * 100,
+              dexterity: (p.dexterity || 0) * 100,
+            },
+          }));
+
+        setRealmCompetitors(competitors);
+      } catch (err) {
+        console.error('Failed to fetch real competitors:', err);
+      }
+    }
+
+    fetchRealCompetitors();
+  }, [isDemoMode, profile.id]);
 
   // Compute User's completed XP per platform category
   const userCategoryXps = useMemo(() => {

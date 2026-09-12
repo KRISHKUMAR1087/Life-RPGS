@@ -62,6 +62,26 @@ export function isPlaceholderSupabase(): boolean {
   );
 }
 
+function getUserLocalCache(uid: string): Profile | null {
+  if (typeof window === 'undefined' || !uid) return null;
+  try {
+    const raw = localStorage.getItem(`life_rpg_profile_cache_${uid}`);
+    if (raw) return JSON.parse(raw) as Profile;
+  } catch {
+    // fallback
+  }
+  return null;
+}
+
+function saveUserLocalCache(uid: string, profile: Profile): void {
+  if (typeof window === 'undefined' || !uid) return;
+  try {
+    localStorage.setItem(`life_rpg_profile_cache_${uid}`, JSON.stringify(profile));
+  } catch {
+    // ignore
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -102,37 +122,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           level: 1,
           xp: 0,
           total_xp: 0,
-          gold: 100,
-          strength: 5,
-          intellect: 5,
-          vitality: 5,
-          charisma: 5,
-          dexterity: 5,
-          streak: 1,
-          longest_streak: 1,
+          gold: 0,
+          strength: 0,
+          intellect: 0,
+          vitality: 0,
+          charisma: 0,
+          dexterity: 0,
+          streak: 0,
+          longest_streak: 0,
           last_active_date: new Date().toISOString().split('T')[0],
           avatar_url: null,
           created_at: new Date().toISOString(),
           onboarding_completed: false,
+          country: 'US',
+          is_public: true,
         };
 
         await supabase.from('profiles').upsert(newProfile);
+        saveUserLocalCache(uid, newProfile);
         setProfile(newProfile);
       } else {
-        const local = loadLocalProfile();
-        setProfile({
-          ...local,
-          ...data,
-          username: formatUsername(data.username || local.username),
-          country: data.country || local.country || 'US',
-          is_public: data.is_public !== undefined ? data.is_public : local.is_public !== false,
-          onboarding_completed: data.onboarding_completed !== undefined ? data.onboarding_completed : local.onboarding_completed,
-        } as Profile);
+        const fullProfile: Profile = {
+          id: uid,
+          username: formatUsername(data.username || user?.user_metadata?.username || 'Hero'),
+          bio: data.bio || '',
+          country: data.country || 'US',
+          is_public: data.is_public !== undefined ? data.is_public : true,
+          onboarding_completed: data.onboarding_completed !== undefined ? data.onboarding_completed : false,
+          level: data.level || 1,
+          xp: data.xp || 0,
+          total_xp: data.total_xp || 0,
+          gold: data.gold || 0,
+          strength: data.strength || 0,
+          intellect: data.intellect || 0,
+          vitality: data.vitality || 0,
+          charisma: data.charisma || 0,
+          dexterity: data.dexterity || 0,
+          streak: data.streak || 0,
+          longest_streak: data.longest_streak || 0,
+          last_active_date: data.last_active_date || new Date().toISOString().split('T')[0],
+          avatar_url: data.avatar_url || null,
+          created_at: data.created_at || new Date().toISOString(),
+        };
+        saveUserLocalCache(uid, fullProfile);
+        setProfile(fullProfile);
       }
     } catch (err) {
       console.error('Failed to load profile:', err);
-      const p = loadLocalProfile();
-      setProfile({ ...p, username: formatUsername(p.username), id: uid });
+      const cached = getUserLocalCache(uid);
+      if (cached) {
+        setProfile(cached);
+      } else {
+        const defaultName = formatUsername(user?.user_metadata?.username || user?.email || 'Hero');
+        setProfile({
+          id: uid,
+          username: defaultName,
+          level: 1,
+          xp: 0,
+          total_xp: 0,
+          gold: 0,
+          strength: 0,
+          intellect: 0,
+          vitality: 0,
+          charisma: 0,
+          dexterity: 0,
+          streak: 0,
+          longest_streak: 0,
+          last_active_date: new Date().toISOString().split('T')[0],
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+          onboarding_completed: false,
+          country: 'US',
+          is_public: true,
+        });
+      }
     }
   }
 
@@ -366,7 +429,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      saveLocalProfile(updatedProfile);
+      saveUserLocalCache(profile.id, updatedProfile);
       setProfile(updatedProfile);
 
       if (updates.username) {

@@ -30,18 +30,31 @@ import {
   calculatePlatformRanks,
   type CategoryConfig,
 } from '@/lib/rpg';
+import { useAuth } from '@/context/AuthContext';
 
 type ProgressPageProps = {
   profile: Profile;
   quests: Quest[];
   customCategories?: CategoryConfig[];
+  peerProfiles?: Array<{
+    id?: string;
+    total_xp: number;
+    strength: number;
+    intellect: number;
+    vitality: number;
+    charisma: number;
+    dexterity: number;
+  }>;
 };
 
 export default function ProgressPage({
   profile,
   quests,
   customCategories = [],
+  peerProfiles = [],
 }: ProgressPageProps) {
+  const { isDemo } = useAuth();
+  const isDemoMode = isDemo || profile.id === 'demo-hero';
   const allCategories = useMemo(
     () => [...CATEGORIES, ...customCategories],
     [customCategories]
@@ -57,7 +70,10 @@ export default function ProgressPage({
   const xpPercent = Math.min(100, (profile.xp / xpNeeded) * 100);
   const rankTitle = getRankTitle(profile.level);
   const nextRankTitle = getRankTitle(profile.level + 5);
-  const platformRanks = useMemo(() => calculatePlatformRanks(profile), [profile]);
+  const platformRanks = useMemo(
+    () => calculatePlatformRanks(profile, peerProfiles, { allowSyntheticBenchmarks: isDemoMode }),
+    [profile, peerProfiles, isDemoMode]
+  );
 
   const completedQuests = useMemo(
     () =>

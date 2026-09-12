@@ -17,21 +17,35 @@ import type { Profile, InventoryItem } from '@/lib/supabase';
 import { xpForLevel, getRankTitle, CATEGORIES, formatUsername, calculatePlatformRanks, getCountry } from '@/lib/rpg';
 import StatRadarChart from '@/components/StatRadarChart';
 
+import { useAuth } from '@/context/AuthContext';
+
 type CharacterPanelProps = {
   profile: Profile;
   inventory?: InventoryItem[];
   variant?: 'vertical' | 'horizontal';
+  peerProfiles?: Array<{
+    id?: string;
+    total_xp: number;
+    strength: number;
+    intellect: number;
+    vitality: number;
+    charisma: number;
+    dexterity: number;
+  }>;
 };
 
 export default function CharacterPanel({
   profile,
   inventory = [],
   variant = 'vertical',
+  peerProfiles = [],
 }: CharacterPanelProps) {
+  const { isDemo } = useAuth();
+  const isDemoMode = isDemo || profile.id === 'demo-hero';
   const [viewMode, setViewMode] = useState<'radar' | 'bars'>('radar');
 
   const cleanUsername = formatUsername(profile.username);
-  const platformRanks = calculatePlatformRanks(profile);
+  const platformRanks = calculatePlatformRanks(profile, peerProfiles, { allowSyntheticBenchmarks: isDemoMode });
   const xpNeeded = xpForLevel(profile.level);
   const xpPercent = Math.min(100, (profile.xp / xpNeeded) * 100);
   const rankTitle = getRankTitle(profile.level);

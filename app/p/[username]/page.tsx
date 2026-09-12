@@ -2,18 +2,20 @@ import type { Metadata } from 'next';
 import PublicProfileView from '@/components/PublicProfileView';
 
 type Props = {
-  params: { username: string };
+  params: Promise<{ username: string }>;
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const username = decodeURIComponent(params.username);
+  const { username: rawName } = await params;
+  const username = decodeURIComponent(rawName);
   return {
     title: `${username} — LifeQuest Hero Profile`,
     description: `Check out ${username}'s hero achievements, level, streak, and stats on LifeQuest RPG!`,
   };
 }
 
-export default function PublicProfilePage({ params }: Props) {
-  const username = decodeURIComponent(params.username);
+export default async function PublicProfilePage({ params }: Props) {
+  const { username: rawName } = await params;
+  const username = decodeURIComponent(rawName);
   return <PublicProfileView username={username} />;
 }

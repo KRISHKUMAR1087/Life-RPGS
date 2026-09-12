@@ -469,16 +469,18 @@ export function calculatePlatformRanks(
     vitality: number;
     charisma: number;
     dexterity: number;
-  }> = []
+  }> = [],
+  options: { allowSyntheticBenchmarks?: boolean } = {}
 ): PlatformRanks {
-  // If no peer profiles exist, populate benchmark competitors for single/demo player view
+  // Populate pool with userProfile if not already included
   let pool = [...peerProfiles];
   const exists = pool.some((p) => p.id && userProfile.id && p.id === userProfile.id);
   if (!exists) {
     pool.push(userProfile);
   }
 
-  if (pool.length < 5) {
+  // Only inject synthetic benchmark competitors if explicitly requested (e.g. in demo mode)
+  if (options.allowSyntheticBenchmarks && pool.length < 5) {
     const benchmarks = [
       { total_xp: 3500, strength: 24, intellect: 30, vitality: 22, charisma: 18, dexterity: 20 },
       { total_xp: 2200, strength: 18, intellect: 16, vitality: 25, charisma: 14, dexterity: 15 },
