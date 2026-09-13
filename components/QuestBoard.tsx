@@ -826,12 +826,7 @@ export default function QuestBoard({
                           : 'border-ink-800/80 bg-ink-950/70 hover:border-amber-500/40'
                       }`}
                     >
-                      <div className="space-y-2.5 flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[11px] font-bold text-amber-400 shrink-0">
-                              +{diffConfig.xp} XP • +{diffConfig.gold} G
-                      <div className="space-y-2">
+                      <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-1 flex-wrap">
                           <div className="flex items-center gap-1.5">
                             <span className="text-[11px] font-bold text-amber-400">
@@ -1053,22 +1048,14 @@ export default function QuestBoard({
 
                       <div>
                         <h4
-<<<<<<< HEAD
-                          className={`text-xs font-bold transition-colors line-clamp-2 break-words ${
-=======
                           className={`text-xs font-bold transition-colors line-clamp-2 break-words leading-snug ${
->>>>>>> 8011bc8 (fix: resolve quest card title clipping, button overflow, and light theme toggle visibility)
                             isCompleted ? 'line-through text-ink-400' : 'text-ink-200'
                           }`}
                         >
                           {quest.title}
                         </h4>
                         {quest.description && (
-<<<<<<< HEAD
-                          <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 break-words">{quest.description}</p>
-=======
-                          <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 leading-relaxed">{quest.description}</p>
->>>>>>> 8011bc8 (fix: resolve quest card title clipping, button overflow, and light theme toggle visibility)
+                          <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 leading-relaxed break-words">{quest.description}</p>
                         )}
                       </div>
                     </div>
