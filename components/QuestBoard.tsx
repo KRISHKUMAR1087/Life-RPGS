@@ -12,13 +12,15 @@ import {
   Search,
   Sparkles,
   Edit3,
+  Bot,
+  Zap,
+  ChevronDown,
   AlertTriangle,
 } from 'lucide-react';
 import type { Quest } from '@/lib/supabase';
 import {
   CATEGORIES,
   DIFFICULTIES,
-  TAVERN_BOUNTIES,
   getCategory,
   getDifficulty,
   type CategoryConfig,
@@ -27,6 +29,7 @@ import {
   type TavernBounty,
 } from '@/lib/rpg';
 import { soundManager } from '@/lib/audio';
+import { evaluateQuestAI, type AIEvaluationResult } from '@/lib/gemini';
 import { getPlatformBounties } from '@/lib/localStore';
 
 type QuestBoardProps = {
@@ -41,6 +44,10 @@ type QuestBoardProps = {
     category: CategoryKey;
     difficulty: DifficultyKey;
     frequency?: 'one_time' | 'daily' | 'weekly';
+    ai_badge?: string;
+    ai_rationale?: string;
+    xp_reward?: number;
+    gold_reward?: number;
   }) => Promise<void>;
   onEdit?: (quest: Quest) => Promise<void>;
   onComplete: (quest: Quest) => Promise<void>;
@@ -70,6 +77,8 @@ export default function QuestBoard({
   const [category, setCategory] = useState<CategoryKey>('strength');
   const [difficulty, setDifficulty] = useState<DifficultyKey>('medium');
   const [frequency, setFrequency] = useState<'one_time' | 'daily' | 'weekly'>('daily');
+  const [aiEvaluation, setAiEvaluation] = useState<AIEvaluationResult | null>(null);
+  const [evaluatingAI, setEvaluatingAI] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -125,8 +134,16 @@ export default function QuestBoard({
       .sort((a, b) => {
         if (yourSortOrder === 'newest') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         if (yourSortOrder === 'oldest') return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-        if (yourSortOrder === 'xp_desc') return getDifficulty(b.difficulty).xp - getDifficulty(a.difficulty).xp;
-        if (yourSortOrder === 'xp_asc') return getDifficulty(a.difficulty).xp - getDifficulty(b.difficulty).xp;
+        if (yourSortOrder === 'xp_desc') {
+          const xpA = a.xp_reward || getDifficulty(a.difficulty).xp;
+          const xpB = b.xp_reward || getDifficulty(b.difficulty).xp;
+          return xpB - xpA;
+        }
+        if (yourSortOrder === 'xp_asc') {
+          const xpA = a.xp_reward || getDifficulty(a.difficulty).xp;
+          const xpB = b.xp_reward || getDifficulty(b.difficulty).xp;
+          return xpA - xpB;
+        }
         if (yourSortOrder === 'title_asc') return a.title.localeCompare(b.title);
         return 0;
       });
@@ -151,6 +168,30 @@ export default function QuestBoard({
     });
   }, [quests, bountyTitles, bountyStatusFilter, bountyCategoryFilter, bountyDifficultyFilter, bountySearchQuery]);
 
+  async function handleAIEvaluate() {
+    if (!title.trim()) {
+      setError('Please provide a quest title before running AI evaluation.');
+      return;
+    }
+    setError(null);
+    setEvaluatingAI(true);
+    soundManager.playClick();
+
+    try {
+      const res = await evaluateQuestAI(title, category, description.slice(0, 75));
+      setAiEvaluation(res);
+      setDifficulty(res.difficulty);
+      if (res.attribute && CATEGORIES.some((c) => c.key === res.attribute)) {
+        setCategory(res.attribute as CategoryKey);
+      }
+      soundManager.playEquip();
+    } catch {
+      setError('AI evaluation temporary error, standard rewards applied.');
+    } finally {
+      setEvaluatingAI(false);
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) {
@@ -172,23 +213,32 @@ export default function QuestBoard({
         await onEdit({
           ...editingQuest,
           title: title.trim(),
-          description: description.trim() || null,
+          description: description.trim().slice(0, 75) || null,
           category,
           difficulty,
           frequency,
+          ai_badge: aiEvaluation?.badge || editingQuest.ai_badge,
+          ai_rationale: aiEvaluation?.rationale || editingQuest.ai_rationale,
+          xp_reward: aiEvaluation?.xp || editingQuest.xp_reward,
+          gold_reward: aiEvaluation?.gold || editingQuest.gold_reward,
         });
         setEditingQuest(null);
       } else {
         await onAdd({
           title: title.trim(),
-          description: description.trim(),
+          description: description.trim().slice(0, 75),
           category,
           difficulty,
           frequency,
+          ai_badge: aiEvaluation?.badge,
+          ai_rationale: aiEvaluation?.rationale,
+          xp_reward: aiEvaluation?.xp,
+          gold_reward: aiEvaluation?.gold,
         });
       }
       setTitle('');
       setDescription('');
+      setAiEvaluation(null);
       setShowForm(false);
     } catch {
       // Error handled by parent toast
@@ -202,10 +252,13 @@ export default function QuestBoard({
     try {
       await onAdd({
         title: bounty.title,
-        description: bounty.description,
-        category: bounty.category,
-        difficulty: bounty.difficulty,
+        description: (bounty.description || '').slice(0, 75),
+        category: bounty.category as CategoryKey,
+        difficulty: bounty.difficulty as DifficultyKey,
         frequency: 'daily',
+        xp_reward: bounty.xp_reward,
+        gold_reward: bounty.gold_reward,
+        ai_badge: 'Tavern Bounty',
       });
     } catch {
       // error handled by parent
@@ -217,9 +270,21 @@ export default function QuestBoard({
     setEditingQuest(quest);
     setTitle(quest.title);
     setDescription(quest.description || '');
-    setCategory(quest.category);
+    setCategory(quest.category as CategoryKey);
     setDifficulty(quest.difficulty as DifficultyKey);
     setFrequency(quest.frequency || 'daily');
+    if (quest.ai_badge) {
+      setAiEvaluation({
+        xp: quest.xp_reward || getDifficulty(quest.difficulty).xp,
+        gold: quest.gold_reward || getDifficulty(quest.difficulty).gold,
+        difficulty: quest.difficulty as DifficultyKey,
+        attribute: (quest.category as any) || 'strength',
+        badge: quest.ai_badge,
+        rationale: quest.ai_rationale || '',
+      });
+    } else {
+      setAiEvaluation(null);
+    }
     setShowForm(true);
   }
 
@@ -242,11 +307,18 @@ export default function QuestBoard({
       {/* Header with Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-heading text-xl font-bold text-ink-200">Quest Board</h2>
-          <p className="text-xs text-ink-400 font-medium">Accept tasks, defeat challenges, and level up</p>
+          <h2 className="font-heading text-xl sm:text-2xl font-black text-ink-100 flex items-center gap-2">
+            Quest Board
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-amber-300">
+              {quests.filter((q) => q.status === 'active').length} Active
+            </span>
+          </h2>
+          <p className="text-xs text-ink-400 font-medium mt-0.5">
+            Accept tasks, earn AI-calibrated XP & gold, and level up your hero
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => {
@@ -256,13 +328,14 @@ export default function QuestBoard({
               if (!showForm) {
                 setTitle('');
                 setDescription('');
+                setAiEvaluation(null);
               }
             }}
             className="px-4 py-2 text-xs font-bold rounded-2xl bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 shadow-ios-md transition-all focus-ring shrink-0"
             aria-label={showForm ? 'Cancel new quest form' : 'Create new quest'}
           >
             {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-            <span>{showForm ? 'Cancel' : 'New Quest'}</span>
+            <span>{showForm ? 'Cancel' : 'Forge Quest'}</span>
           </button>
 
           <button
@@ -296,7 +369,7 @@ export default function QuestBoard({
               transition={{ duration: 0.18 }}
               className="w-full max-w-2xl"
             >
-              <div className="rpg-card p-5 sm:p-6 border border-amber-500/30 rounded-3xl space-y-4 shadow-2xl bg-ink-900 relative max-h-[85vh] overflow-y-auto">
+              <div className="glass-card p-5 sm:p-6 border border-amber-500/30 rounded-3xl space-y-4 shadow-2xl bg-ink-900 relative max-h-[85vh] overflow-y-auto">
                 <div className="flex items-center justify-between pb-2 border-b border-ink-800">
                   <div>
                     <h3 className="text-base font-bold text-ink-200 flex items-center gap-2">
@@ -315,23 +388,25 @@ export default function QuestBoard({
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-                  {TAVERN_BOUNTIES.map((bounty, idx) => {
+                  {tavernBounties.map((bounty, idx) => {
                     const diffConfig = getDifficulty(bounty.difficulty);
                     const catConfig = getCategory(bounty.category, customCategories);
                     const isAlreadyActive = quests.some(
                       (q) => q.status === 'active' && q.title.toLowerCase() === bounty.title.toLowerCase()
                     );
+                    const xpVal = bounty.xp_reward || diffConfig.xp;
+                    const goldVal = bounty.gold_reward || diffConfig.gold;
 
                     return (
                       <div
                         key={idx}
-                        className="rpg-card p-4 rounded-2xl border border-ink-800 bg-ink-950/80 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-3 group shadow-ios-sm"
+                        className="glass-card p-4 rounded-2xl border border-ink-800 bg-ink-950/80 hover:border-amber-500/40 transition-all flex flex-col justify-between space-y-3 group shadow-ios-sm"
                       >
                         <div className="space-y-2">
                           <div className="flex items-center justify-between gap-1">
                             <span className="text-2xl">{bounty.icon}</span>
                             <span className="text-[11px] font-bold text-amber-400">
-                              +{diffConfig.xp} XP • +{diffConfig.gold} G
+                              +{xpVal} XP • +{goldVal} G
                             </span>
                           </div>
 
@@ -383,7 +458,7 @@ export default function QuestBoard({
         )}
       </AnimatePresence>
 
-      {/* New / Edit Quest Popup Modal */}
+      {/* New / Edit Quest Popup Modal (with Gemini AI Integration & 75-char limit) */}
       <AnimatePresence>
         {showForm && (
           <div
@@ -404,32 +479,28 @@ export default function QuestBoard({
             >
               <form
                 onSubmit={handleSubmit}
-                className="rpg-card p-5 sm:p-6 border border-amber-500/30 rounded-3xl space-y-4 shadow-2xl bg-ink-900 relative max-h-[90vh] overflow-y-auto"
+                className="glass-card p-5 sm:p-6 border border-amber-500/40 rounded-3xl space-y-4 shadow-2xl bg-ink-900 relative max-h-[90vh] overflow-y-auto"
               >
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-ink-200 flex items-center gap-2">
-                    <Swords className="w-4 h-4 text-amber-500" />
-                    {editingQuest ? 'Edit Quest Details' : 'Forge a New Quest'}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowForm(false);
-                      setEditingQuest(null);
-                    }}
-                    className="text-ink-400 hover:text-ink-200 p-1 focus-ring rounded-lg"
-                    aria-label="Close quest form"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <Swords className="w-4 h-4 text-amber-400" />
+                    <h3 className="text-sm font-bold text-ink-100">
+                      {editingQuest ? 'Edit Quest Details' : 'Forge a New Quest'}
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
+                    <Bot className="w-3.5 h-3.5" />
+                    <span>Gemini 3.6 Flash</span>
+                  </div>
                 </div>
 
                 {error && (
-                  <div className="text-xs text-flame-500 bg-flame-500/10 border border-flame-500/20 p-2.5 rounded-xl">
+                  <div className="text-xs text-flame-400 bg-flame-500/10 border border-flame-500/20 p-2.5 rounded-xl">
                     {error}
                   </div>
                 )}
 
+                {/* Title input */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between items-center">
                     <label className="block text-xs font-semibold text-ink-300">Quest Title *</label>
@@ -446,58 +517,134 @@ export default function QuestBoard({
                     value={title}
                     maxLength={100}
                     onChange={(e) => setTitle(e.target.value)}
-                    placeholder="e.g. Conquer 50 Pushups or Complete React Chapter"
-                    className="input-field text-sm focus-ring"
-                    disabled={submitting}
+                    placeholder="e.g. 50 Pushups or Complete React Chapter"
+                    className="input-field text-sm"
+                    disabled={submitting || evaluatingAI}
                   />
                 </div>
 
+                {/* Description input with 75-character counter */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-ink-300">Quest Notes / Lore (Optional)</label>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-semibold text-ink-300">
+                      Quest Description / Lore (Max 75 chars)
+                    </label>
+                    <span
+                      className={`text-[10px] font-mono font-bold ${
+                        description.length > 70 ? 'text-amber-400' : 'text-ink-400'
+                      }`}
+                    >
+                      {description.length} / 75
+                    </span>
+                  </div>
                   <textarea
                     value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Add specific objectives, links, or notes..."
+                    onChange={(e) => setDescription(e.target.value.slice(0, 75))}
+                    maxLength={75}
+                    placeholder="Brief note or condition (e.g. Deep focus without distractions)"
                     rows={2}
-                    className="input-field text-sm resize-none focus-ring"
-                    disabled={submitting}
+                    className="input-field text-sm resize-none"
+                    disabled={submitting || evaluatingAI}
                   />
                 </div>
 
+                {/* AI Auto-Evaluate Sparkle Button & Results Pill */}
+                <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/25 space-y-2.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                      <div>
+                        <div className="text-xs font-bold text-amber-300">AI Dungeon Master Valuation</div>
+                        <div className="text-[10px] text-ink-400">
+                          Evaluates effort to balance XP & gold rewards
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleAIEvaluate}
+                      disabled={evaluatingAI || !title.trim()}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ink-950 text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-ios-sm self-start sm:self-auto"
+                    >
+                      {evaluatingAI ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Zap className="w-3.5 h-3.5 fill-ink-950" />
+                      )}
+                      <span>{evaluatingAI ? 'Evaluating...' : '⚡ AI Auto-Evaluate'}</span>
+                    </button>
+                  </div>
+
+                  {aiEvaluation && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-2.5 rounded-xl bg-ink-850/90 border border-amber-400/40 text-xs space-y-1.5"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/40">
+                          Badge: {aiEvaluation.badge}
+                        </span>
+                        <span className="text-emerald2-400 font-bold">
+                          +{aiEvaluation.xp} XP
+                        </span>
+                        <span className="text-amber-400 font-bold">
+                          +{aiEvaluation.gold} Gold
+                        </span>
+                        <span className="text-ink-400 text-[10px] capitalize">
+                          Tier: {aiEvaluation.difficulty}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-ink-300 italic font-normal">
+                        &quot;{aiEvaluation.rationale}&quot;
+                      </p>
+                    </motion.div>
+                  )}
+                </div>
+
+                {/* Category & Difficulty Selection */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-ink-300">Attribute Category</label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value)}
-                      className="input-field text-sm focus-ring cursor-pointer"
-                      disabled={submitting}
-                    >
-                      {allCategories.map((c) => (
-                        <option key={c.key} value={c.key}>
-                          {c.label} ({c.description})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value as CategoryKey)}
+                        className="input-field text-sm appearance-none pr-8 cursor-pointer bg-ink-900 border-white/15"
+                        disabled={submitting}
+                      >
+                        {allCategories.map((c) => (
+                          <option key={c.key} value={c.key}>
+                            {c.label} ({c.description})
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-ink-300">Difficulty Tier</label>
-                    <select
-                      value={difficulty}
-                      onChange={(e) => setDifficulty(e.target.value as DifficultyKey)}
-                      className="input-field text-sm focus-ring cursor-pointer"
-                      disabled={submitting}
-                    >
-                      {DIFFICULTIES.map((d) => (
-                        <option key={d.key} value={d.key}>
-                          {d.label} — +{d.xp} XP / +{d.gold} Gold
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={difficulty}
+                        onChange={(e) => setDifficulty(e.target.value as DifficultyKey)}
+                        className="input-field text-sm appearance-none pr-8 cursor-pointer bg-ink-900 border-white/15"
+                        disabled={submitting}
+                      >
+                        {DIFFICULTIES.map((d) => (
+                          <option key={d.key} value={d.key}>
+                            {d.label} — +{d.xp} XP / +{d.gold} Gold
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
 
+                {/* Recurrence Schedule */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-ink-300 flex items-center gap-1">
                     <span>Recurrence Schedule (IST Reset)</span>
@@ -528,21 +675,22 @@ export default function QuestBoard({
                   </div>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-2">
+                <div className="flex justify-end gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={() => {
                       setShowForm(false);
                       setEditingQuest(null);
+                      setAiEvaluation(null);
                     }}
-                    className="px-4 py-2 bg-ink-800 text-ink-300 rounded-xl text-xs font-semibold hover:bg-ink-700 focus-ring"
+                    className="btn-ghost px-4 py-2 text-xs font-semibold"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
-                    className="btn-primary px-5 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 focus-ring"
+                    disabled={submitting || evaluatingAI}
+                    className="btn-primary px-5 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5"
                   >
                     {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     {editingQuest ? 'Save Changes' : 'Accept Quest'}
@@ -557,7 +705,7 @@ export default function QuestBoard({
       {/* Quests Content: 2 Blocks Side-by-Side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         {/* BLOCK 1: Your Quests Unified Block */}
-        <div className="rpg-card p-4 sm:p-5 rounded-3xl border border-ink-800 bg-ink-900 space-y-4 shadow-ios-md h-full flex flex-col justify-between">
+        <div className="glass-card p-4 sm:p-5 rounded-3xl border border-ink-800 bg-ink-900 space-y-4 shadow-ios-md h-full flex flex-col justify-between">
           {/* Header Row: Title on Left, Search Box on Right */}
           <div className="space-y-3 pb-3 border-b border-ink-800/80">
             <div className="flex items-center justify-between gap-3">
@@ -645,7 +793,7 @@ export default function QuestBoard({
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
               {[1, 2, 3, 4].map((n) => (
-                <div key={n} className="rpg-card p-4 h-36 loading-skeleton rounded-2xl" />
+                <div key={n} className="glass-card p-4 h-36 loading-skeleton rounded-2xl" />
               ))}
             </div>
           ) : filteredYourQuests.length === 0 ? (
@@ -662,6 +810,8 @@ export default function QuestBoard({
                   const isCompleted = quest.status === 'completed';
                   const isCompleting = completingId === quest.id;
                   const isDeleting = deletingId === quest.id;
+                  const xpVal = quest.xp_reward || diffConfig.xp;
+                  const goldVal = quest.gold_reward || diffConfig.gold;
 
                   return (
                     <motion.div
@@ -681,10 +831,21 @@ export default function QuestBoard({
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[11px] font-bold text-amber-400 shrink-0">
                               +{diffConfig.xp} XP • +{diffConfig.gold} G
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-1 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[11px] font-bold text-amber-400">
+                              +{xpVal} XP • +{goldVal} G
                             </span>
                             {quest.frequency && quest.frequency !== 'one_time' && (
                               <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
                                 {quest.frequency === 'daily' ? '🔁 Daily' : '📅 Weekly'}
+                              </span>
+                            )}
+                            {quest.ai_badge && (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-400/30 flex items-center gap-0.5">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                {quest.ai_badge}
                               </span>
                             )}
                           </div>
@@ -703,6 +864,11 @@ export default function QuestBoard({
                           </h4>
                           {quest.description && (
                             <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 break-words">{quest.description}</p>
+                          )}
+                          {quest.ai_rationale && (
+                            <p className="text-[10px] text-amber-300/80 italic font-mono mt-0.5">
+                              AI: &quot;{quest.ai_rationale}&quot;
+                            </p>
                           )}
                         </div>
                       </div>
@@ -759,7 +925,10 @@ export default function QuestBoard({
                           aria-label={`Delete quest "${quest.title}"`}
                         >
                           {isDeleting ? (
-                            <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
+                            <>
+                              <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
+                              <span>Confirm?</span>
+                            </>
                           ) : (
                             <Trash2 className="w-3.5 h-3.5" />
                           )}
@@ -774,7 +943,7 @@ export default function QuestBoard({
         </div>
 
         {/* BLOCK 2: Tavern Bounties Unified Block */}
-        <div className="rpg-card p-4 sm:p-5 rounded-3xl border border-ink-800 bg-ink-900 space-y-4 shadow-ios-md h-full flex flex-col justify-between">
+        <div className="glass-card p-4 sm:p-5 rounded-3xl border border-ink-800 bg-ink-900 space-y-4 shadow-ios-md h-full flex flex-col justify-between">
           {/* Header Row: Title on Left, Search Box on Right */}
           <div className="space-y-3 pb-3 border-b border-ink-800/80">
             <div className="flex items-center justify-between gap-3">
@@ -860,6 +1029,8 @@ export default function QuestBoard({
                 const catConfig = getCategory(quest.category, customCategories);
                 const diffConfig = getDifficulty(quest.difficulty);
                 const isCompleted = quest.status === 'completed';
+                const xpVal = quest.xp_reward || diffConfig.xp;
+                const goldVal = quest.gold_reward || diffConfig.gold;
 
                 return (
                   <div

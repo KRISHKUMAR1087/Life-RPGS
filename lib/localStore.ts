@@ -112,60 +112,7 @@ export const SEED_SHOP_ITEMS: ShopItem[] = [
   },
 ];
 
-export const INITIAL_DEMO_QUESTS: Quest[] = [
-  {
-    id: 'quest-morning-workout',
-    user_id: 'demo-hero',
-    title: 'Morning Workout & Stretch',
-    description: 'Complete 20 minutes of stretching and physical exercise.',
-    category: 'strength',
-    difficulty: 'easy',
-    status: 'active',
-    frequency: 'daily',
-    completed_at: null,
-    quest_date: getISTDateString(),
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-  {
-    id: 'quest-read-book',
-    user_id: 'demo-hero',
-    title: 'Read 15 Pages of a Book',
-    description: 'Focus on personal development or fantasy lore.',
-    category: 'intellect',
-    difficulty: 'medium',
-    status: 'active',
-    frequency: 'daily',
-    completed_at: null,
-    quest_date: getISTDateString(),
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-  {
-    id: 'quest-hydrate-meditate',
-    user_id: 'demo-hero',
-    title: 'Hydrate & 10-Min Mindfulness',
-    description: 'Drink 1L water and practice mindful breathing.',
-    category: 'vitality',
-    difficulty: 'easy',
-    status: 'active',
-    frequency: 'daily',
-    completed_at: null,
-    quest_date: getISTDateString(),
-    created_at: new Date(Date.now() - 10800000).toISOString(),
-  },
-  {
-    id: 'quest-code-project',
-    user_id: 'demo-hero',
-    title: 'Build a Feature in Code',
-    description: 'Solve an interesting coding challenge or ship a feature.',
-    category: 'dexterity',
-    difficulty: 'hard',
-    status: 'active',
-    frequency: 'weekly',
-    completed_at: null,
-    quest_date: getISTDateString(),
-    created_at: new Date(Date.now() - 14400000).toISOString(),
-  },
-];
+export const INITIAL_DEMO_QUESTS: Quest[] = [];
 
 export function getInitialDemoProfile(heroName = 'Hero'): Profile {
   return {
@@ -178,17 +125,18 @@ export function getInitialDemoProfile(heroName = 'Hero'): Profile {
     level: 1,
     xp: 0,
     total_xp: 0,
-    gold: 75,
-    strength: 5,
-    intellect: 5,
-    vitality: 5,
-    charisma: 5,
-    dexterity: 5,
-    streak: 3,
-    longest_streak: 7,
-    last_active_date: getISTDateString(),
+    gold: 0,
+    strength: 0,
+    intellect: 0,
+    vitality: 0,
+    charisma: 0,
+    dexterity: 0,
+    streak: 0,
+    longest_streak: 0,
+    last_active_date: null,
     avatar_url: null,
     created_at: new Date().toISOString(),
+    motto: 'Aspiring adventurer forging their destiny',
   };
 }
 
@@ -279,7 +227,7 @@ export function processISTQuestResets(quests: Quest[]): { updatedQuests: Quest[]
 }
 
 export function loadLocalQuests(): Quest[] {
-  if (typeof window === 'undefined') return INITIAL_DEMO_QUESTS;
+  if (typeof window === 'undefined') return [];
   const raw = localStorage.getItem(STORAGE_KEYS.QUESTS);
   let quests = INITIAL_DEMO_QUESTS;
   if (raw) {
@@ -341,7 +289,9 @@ export function completeLocalQuest(questId: string): CompleteQuestResult {
   };
 
   const difficulty = (quest.difficulty as DifficultyKey) || 'medium';
-  const { xp: xpGain, gold: goldGain } = rewardMap[difficulty] ?? rewardMap.medium;
+  const standardReward = rewardMap[difficulty] ?? rewardMap.medium;
+  const xpGain = quest.xp_reward || standardReward.xp;
+  const goldGain = quest.gold_reward || standardReward.gold;
 
   let currentXp = profile.xp + xpGain;
   let currentLevel = profile.level;
@@ -359,18 +309,20 @@ export function completeLocalQuest(questId: string): CompleteQuestResult {
     xp: currentXp,
     total_xp: profile.total_xp + xpGain,
     gold: profile.gold + goldGain,
-    strength: quest.category === 'strength' ? profile.strength + 1 : profile.strength,
-    intellect: quest.category === 'intellect' ? profile.intellect + 1 : profile.intellect,
-    vitality: quest.category === 'vitality' ? profile.vitality + 1 : profile.vitality,
-    charisma: quest.category === 'charisma' ? profile.charisma + 1 : profile.charisma,
-    dexterity: quest.category === 'dexterity' ? profile.dexterity + 1 : profile.dexterity,
+    strength: profile.strength + (quest.category === 'strength' ? 1 : 0),
+    intellect: profile.intellect + (quest.category === 'intellect' ? 1 : 0),
+    vitality: profile.vitality + (quest.category === 'vitality' ? 1 : 0),
+    charisma: profile.charisma + (quest.category === 'charisma' ? 1 : 0),
+    dexterity: profile.dexterity + (quest.category === 'dexterity' ? 1 : 0),
+    streak: profile.streak + 1,
+    longest_streak: Math.max(profile.longest_streak, profile.streak + 1),
     last_active_date: getISTDateString(),
   };
 
   saveLocalProfile(updatedProfile);
 
   const updatedQuests = quests.map((q) =>
-    q.id === questId ? { ...q, status: 'completed', completed_at: new Date().toISOString() } : q
+    q.id === questId ? { ...q, status: 'completed' as const, completed_at: new Date().toISOString() } : q
   );
   saveLocalQuests(updatedQuests);
 
@@ -703,5 +655,3 @@ export function getDemoBounties(): TavernBounty[] {
 export function saveDemoBounties(bounties: TavernBounty[]): void {
   savePlatformBounties(bounties);
 }
-
-

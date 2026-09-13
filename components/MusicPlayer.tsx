@@ -1,19 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Music } from 'lucide-react';
 import { soundManager } from '@/lib/audio';
 
-type MusicPlayerProps = {
-  onToast?: (msg: string, type: 'success' | 'error') => void;
-};
-
-export default function MusicPlayer({ onToast }: MusicPlayerProps) {
+export default function MusicPlayer() {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
-    setIsMuted(soundManager.isMuted());
     const unsubscribe = soundManager.subscribeBgm((playing) => {
       setIsPlaying(playing);
     });
@@ -25,57 +19,34 @@ export default function MusicPlayer({ onToast }: MusicPlayerProps) {
   function handleToggleMusic() {
     const nextPlaying = soundManager.toggleBgm();
     setIsPlaying(nextPlaying);
-    if (onToast) {
-      onToast(
-        nextPlaying ? '🎵 Background music playing.' : '⏸️ Background music paused.',
-        'success'
-      );
-    }
-  }
-
-  function handleToggleSfx() {
-    const nextMuted = soundManager.toggleMute();
-    setIsMuted(nextMuted);
-    if (onToast) {
-      onToast(nextMuted ? '🔇 Sound effects muted.' : '🔊 Sound effects unmuted.', 'success');
-    }
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {/* BGM Music Play/Pause Icon Button */}
-      <button
-        type="button"
-        onClick={handleToggleMusic}
-        className={`p-2 rounded-xl border transition-all flex items-center justify-center focus-ring ${
-          isPlaying
-            ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-            : 'bg-ink-850 border-ink-800 text-ink-500 hover:text-ink-300'
-        }`}
-        title={isPlaying ? 'Pause Background Music' : 'Play Background Music'}
-        aria-label={isPlaying ? 'Pause Background Music' : 'Play Background Music'}
-      >
-        {isPlaying ? (
-          <Pause className="w-4 h-4 fill-amber-400 text-amber-400" />
-        ) : (
-          <Play className="w-4 h-4 fill-current" />
-        )}
-      </button>
+    <button
+      type="button"
+      onClick={handleToggleMusic}
+      className={`relative group flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-300 border flex-shrink-0 ${
+        isPlaying
+          ? 'bg-amber-500/15 border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.35)] text-amber-300'
+          : 'bg-ink-900/60 backdrop-blur-xl border-white/10 text-ink-400 hover:text-amber-300 hover:border-amber-500/40 hover:bg-ink-850/80 shadow-ios-sm'
+      }`}
+      title={isPlaying ? 'Realm Music Playing (Tap to Pause)' : 'Play Realm Music (Tap to Start)'}
+      aria-label="Toggle Background Music"
+    >
+      {isPlaying ? (
+        <div className="flex items-end gap-[3px] h-4 w-4 justify-center">
+          <span className="w-1 bg-gradient-to-t from-amber-500 to-amber-300 rounded-full animate-[equalizer_0.7s_ease-in-out_infinite]" />
+          <span className="w-1 bg-gradient-to-t from-amber-400 to-yellow-200 rounded-full animate-[equalizer_1.0s_ease-in-out_infinite_0.15s]" />
+          <span className="w-1 bg-gradient-to-t from-amber-500 to-amber-300 rounded-full animate-[equalizer_0.85s_ease-in-out_infinite_0.3s]" />
+        </div>
+      ) : (
+        <Music className="w-4 h-4 transition-transform group-hover:scale-110 group-active:scale-95" />
+      )}
 
-      {/* SFX Sound Effects Speaker Icon Button */}
-      <button
-        type="button"
-        onClick={handleToggleSfx}
-        className={`p-2 rounded-xl border transition-all flex items-center justify-center focus-ring ${
-          isMuted
-            ? 'bg-ink-850 border-ink-800 text-ink-500 hover:text-ink-300'
-            : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-        }`}
-        title={isMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
-        aria-label={isMuted ? 'Unmute Sound Effects' : 'Mute Sound Effects'}
-      >
-        {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-      </button>
-    </div>
+      {/* Subtle pulse ring when playing */}
+      {isPlaying && (
+        <span className="absolute inset-0 rounded-2xl border border-amber-400/40 animate-ping pointer-events-none opacity-40" />
+      )}
+    </button>
   );
 }

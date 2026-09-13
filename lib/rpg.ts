@@ -52,6 +52,8 @@ export type TavernBounty = {
   category: CategoryKey;
   difficulty: DifficultyKey;
   icon: string;
+  xp_reward?: number;
+  gold_reward?: number;
 };
 
 export const TAVERN_BOUNTIES: TavernBounty[] = [

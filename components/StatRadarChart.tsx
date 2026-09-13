@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { CATEGORY_COLORS } from '@/lib/rpg';
 
@@ -15,29 +15,9 @@ type StatRadarChartProps = {
   size?: number;
 };
 
-export default function StatRadarChart({ stats, size = 240 }: StatRadarChartProps) {
-  const [chartSize, setChartSize] = useState(size);
-
-  useEffect(() => {
-    function updateSize() {
-      if (typeof window !== 'undefined') {
-        const screenWidth = window.innerWidth;
-        if (screenWidth < 360) {
-          setChartSize(Math.min(size, 200));
-        } else if (screenWidth < 400) {
-          setChartSize(Math.min(size, 220));
-        } else {
-          setChartSize(size);
-        }
-      }
-    }
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
-  }, [size]);
-
-  const center = chartSize / 2;
-  const radius = (chartSize / 2) * 0.72;
+export default function StatRadarChart({ stats, size = 260 }: StatRadarChartProps) {
+  const center = size / 2;
+  const radius = (size / 2) * 0.58;
 
   const statEntries = useMemo(
     () => [
@@ -52,19 +32,19 @@ export default function StatRadarChart({ stats, size = 240 }: StatRadarChartProp
 
   const maxVal = useMemo(() => {
     const highest = Math.max(...statEntries.map((s) => s.val));
-    return Math.max(highest, 15);
+    return Math.max(highest, 10);
   }, [statEntries]);
 
   // Compute angles & coordinates
   const total = statEntries.length;
   const points = statEntries.map((stat, i) => {
     const angle = (Math.PI * 2 * i) / total - Math.PI / 2;
-    const normalized = Math.min(1, Math.max(0.15, stat.val / maxVal));
+    const normalized = Math.min(1, Math.max(0.12, stat.val / maxVal));
     const r = normalized * radius;
     const x = center + r * Math.cos(angle);
     const y = center + r * Math.sin(angle);
 
-    const labelR = radius + 24;
+    const labelR = radius + 22;
     const labelX = center + labelR * Math.cos(angle);
     const labelY = center + labelR * Math.sin(angle);
 
@@ -77,8 +57,11 @@ export default function StatRadarChart({ stats, size = 240 }: StatRadarChartProp
   const gridLevels = [0.25, 0.5, 0.75, 1.0];
 
   return (
-    <div className="relative flex flex-col items-center justify-center p-2">
-      <svg width={chartSize} height={chartSize} className="overflow-visible select-none">
+    <div className="relative flex flex-col items-center justify-center p-1 w-full max-w-[280px]">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        className="w-full h-auto max-w-[260px] overflow-visible select-none"
+      >
         <defs>
           <radialGradient id="radarGlow" cx="50%" cy="50%" r="50%">
             <stop offset="0%" stopColor="#fbbf24" stopOpacity="0.35" />
@@ -148,11 +131,11 @@ export default function StatRadarChart({ stats, size = 240 }: StatRadarChartProp
         {/* Stat Vertex Dots */}
         {points.map((p) => (
           <g key={p.key}>
-            <circle cx={p.x} cy={p.y} r="6" fill={p.color} className="animate-pulse" opacity="0.4" />
+            <circle cx={p.x} cy={p.y} r="5" fill={p.color} className="animate-pulse" opacity="0.4" />
             <circle
               cx={p.x}
               cy={p.y}
-              r="3.5"
+              r="3"
               fill="#ffffff"
               stroke={p.color}
               strokeWidth="2"
@@ -175,7 +158,7 @@ export default function StatRadarChart({ stats, size = 240 }: StatRadarChartProp
             </text>
             <text
               x={p.labelX}
-              y={p.labelY + 8}
+              y={p.labelY + 7}
               textAnchor="middle"
               dominantBaseline="middle"
               className="text-[10px] font-bold fill-ink-400 tabular-nums"
