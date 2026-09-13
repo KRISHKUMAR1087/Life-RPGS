@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import PublicProfileView from '@/components/PublicProfileView';
 
-export const runtime = 'nodejs';
+export const runtime = 'edge';
 
 type Props = {
   params: Promise<{ username: string }>;
