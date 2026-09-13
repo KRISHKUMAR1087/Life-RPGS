@@ -35,6 +35,7 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    font-size: 105%;
   }
   body {
     font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
@@ -60,6 +61,10 @@
     background-color: #121216 !important;
     color: #f4f4f5 !important;
   }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 focus-visible:ring-offset-ink-950;
+  }
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -71,6 +76,32 @@
     background: var(--color-text-dim);
     border-radius: 9999px;
     opacity: 0.4;
+  }
+
+  /* Custom RPG Dropdown Select Styling */
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23f59e0b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1.125rem;
+    padding-right: 2.5rem !important;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  select option {
+    background-color: #18181b;
+    color: #f4f4f5;
+    padding: 10px 14px;
+    font-weight: 600;
+  }
+
+  .dark select option {
+    background-color: #09090b;
+    color: #f4f4f5;
   }
 }
 
@@ -245,6 +276,15 @@
   animation: pulse-glow 2.5s infinite ease-in-out;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 @keyframes equalizer {
   0%, 100% {
     height: 3px;
@@ -253,5 +293,3 @@
     height: 14px;
   }
 }
-
-

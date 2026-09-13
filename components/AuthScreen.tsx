@@ -2,13 +2,17 @@
 
 import { useState, type FormEvent } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sword, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, Sparkles, Play } from 'lucide-react';
+import { Sword, Mail, Lock, User, Eye, EyeOff, AlertCircle, Loader2, ShieldCheck, Sparkles, Play, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import ThemeToggle from '@/components/ThemeToggle';
 
 import MusicPlayer from '@/components/MusicPlayer';
 
-export default function AuthScreen() {
+type AuthScreenProps = {
+  onBackToLanding?: () => void;
+};
+
+export default function AuthScreen({ onBackToLanding }: AuthScreenProps = {}) {
   const { signIn, signUp, loginDemo } = useAuth();
   const [mode, setMode] = useState<'login' | 'signup'>('signup');
   const [email, setEmail] = useState('');
@@ -53,6 +57,20 @@ export default function AuthScreen() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8 relative overflow-hidden bg-ink-950">
+      {/* Top Left Back to Landing Button */}
+      {onBackToLanding && (
+        <div className="absolute top-5 left-5 z-20">
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            className="px-3.5 py-2 rounded-2xl bg-ink-900 border border-ink-800 text-ink-300 hover:text-ink-100 text-xs font-bold flex items-center gap-1.5 transition-all shadow-ios-sm focus-ring"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Landing Page</span>
+          </button>
+        </div>
+      )}
+
       {/* Top right Music Player & Theme Toggle */}
       <div className="absolute top-5 right-5 z-20 flex items-center gap-3">
         <MusicPlayer />
@@ -101,7 +119,7 @@ export default function AuthScreen() {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 z-10 ${
                 mode === 'signup'
-                  ? 'bg-white dark:bg-zinc-800 text-ink-200 shadow-ios-sm'
+                  ? 'bg-white dark:bg-ink-800 text-ink-200 shadow-ios-sm'
                   : 'text-ink-400 hover:text-ink-200'
               }`}
             >
@@ -115,7 +133,7 @@ export default function AuthScreen() {
               }}
               className={`flex-1 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 z-10 ${
                 mode === 'login'
-                  ? 'bg-white dark:bg-zinc-800 text-ink-200 shadow-ios-sm'
+                  ? 'bg-white dark:bg-ink-800 text-ink-200 shadow-ios-sm'
                   : 'text-ink-400 hover:text-ink-200'
               }`}
             >

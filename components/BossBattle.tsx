@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { soundManager } from '@/lib/audio';
 import type { Quest, Profile } from '@/lib/supabase';
+import { getAdminBossConfig } from '@/lib/adminStore';
 
 type BossBattleProps = {
   quests: Quest[];
@@ -32,17 +33,12 @@ type BossInfo = {
   lootGold: number;
 };
 
-const DAILY_BOSS: BossInfo = {
-  name: 'Malakor the Sloth Wyrm',
-  title: 'Bane of Procrastination & Lord of Delay',
-  maxHp: 500,
-  avatar: '🐉',
-  quote: '"You will never conquer your daily scrolls of fate..."',
-  lootXp: 150,
-  lootGold: 50,
-};
-
 export default function BossBattle({ quests, profile, onClaimVictoryBonus }: BossBattleProps) {
+  const [bossInfo, setBossInfo] = useState<BossInfo>(() => getAdminBossConfig());
+
+  useEffect(() => {
+    setBossInfo(getAdminBossConfig());
+  }, []);
   const completedToday = quests.filter((q) => q.status === 'completed');
   const activeToday = quests.filter((q) => q.status === 'active');
   const totalQuests = quests.length;
@@ -63,8 +59,8 @@ export default function BossBattle({ quests, profile, onClaimVictoryBonus }: Bos
     }
   }, 0);
 
-  const currentHp = Math.max(0, DAILY_BOSS.maxHp - damageDealt);
-  const hpPercent = Math.min(100, Math.max(0, (currentHp / DAILY_BOSS.maxHp) * 100));
+  const currentHp = Math.max(0, bossInfo.maxHp - damageDealt);
+  const hpPercent = Math.min(100, Math.max(0, (currentHp / bossInfo.maxHp) * 100));
   const isDefeated = currentHp <= 0;
 
   const [hasClaimedLoot, setHasClaimedLoot] = useState(false);
@@ -89,7 +85,7 @@ export default function BossBattle({ quests, profile, onClaimVictoryBonus }: Bos
       localStorage.setItem(claimStorageKey, 'true');
     }
     if (onClaimVictoryBonus) {
-      onClaimVictoryBonus({ xp: DAILY_BOSS.lootXp, gold: DAILY_BOSS.lootGold });
+      onClaimVictoryBonus({ xp: bossInfo.lootXp, gold: bossInfo.lootGold });
     }
   }
 
@@ -103,16 +99,16 @@ export default function BossBattle({ quests, profile, onClaimVictoryBonus }: Bos
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 relative z-10">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-flame-500 to-amber-600 flex items-center justify-center text-2xl shadow-ios-md">
-            {DAILY_BOSS.avatar}
+            {bossInfo.avatar}
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-heading text-lg font-bold text-ink-200">{DAILY_BOSS.name}</h2>
+              <h2 className="font-heading text-lg font-bold text-ink-200">{bossInfo.name}</h2>
               <span className="text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full bg-flame-500/20 text-flame-400 border border-flame-500/30">
                 Daily Raid
               </span>
             </div>
-            <p className="text-xs text-ink-400 font-medium">{DAILY_BOSS.title}</p>
+            <p className="text-xs text-ink-400 font-medium">{bossInfo.title}</p>
           </div>
         </div>
 
@@ -149,7 +145,7 @@ export default function BossBattle({ quests, profile, onClaimVictoryBonus }: Bos
                 : 'bg-gradient-to-b from-flame-500/20 to-amber-500/10 border-2 border-flame-500/40 shadow-[0_0_35px_rgba(244,63,94,0.3)]'
             }`}
           >
-            {DAILY_BOSS.avatar}
+            {bossInfo.avatar}
           </div>
 
           {/* Status Badge on Creature */}
@@ -169,7 +165,7 @@ export default function BossBattle({ quests, profile, onClaimVictoryBonus }: Bos
 
         {/* Boss Quote */}
         <p className="text-xs italic text-ink-400 max-w-sm mx-auto mb-4 font-normal">
-          {isDefeated ? '"Ugh... your productivity vanquished my slumber..."' : DAILY_BOSS.quote}
+          {isDefeated ? '"Ugh... your productivity vanquished my slumber..."' : bossInfo.quote}
         </p>
 
         {/* HP Bar */}
@@ -179,7 +175,7 @@ export default function BossBattle({ quests, profile, onClaimVictoryBonus }: Bos
               <Skull className="w-3.5 h-3.5" /> Boss Health Pool
             </span>
             <span className="text-ink-300 tabular-nums">
-              {currentHp} / {DAILY_BOSS.maxHp} HP ({Math.round(hpPercent)}%)
+              {currentHp} / {bossInfo.maxHp} HP ({Math.round(hpPercent)}%)
             </span>
           </div>
           <div className="h-4 bg-ink-850 rounded-full overflow-hidden p-0.5 border border-ink-800">
@@ -217,7 +213,7 @@ export default function BossBattle({ quests, profile, onClaimVictoryBonus }: Bos
               <Trophy className="w-4 h-4 text-amber-500" /> Victory Spoils
             </h4>
             <span className="text-xs font-bold text-amber-400">
-              +{DAILY_BOSS.lootXp} XP / +{DAILY_BOSS.lootGold} Gold
+              +{bossInfo.lootXp} XP / +{bossInfo.lootGold} Gold
             </span>
           </div>
 

@@ -117,11 +117,12 @@ export default function Shop({
             soundManager.playClick();
             setTab('shop');
           }}
-          className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+          className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 focus-ring ${
             tab === 'shop'
-              ? 'bg-white dark:bg-zinc-800 text-amber-500 shadow-ios-sm'
+              ? 'bg-white dark:bg-ink-800 text-amber-500 shadow-ios-sm'
               : 'text-ink-400 hover:text-ink-200'
           }`}
+          aria-label="Merchant Shop catalog"
         >
           Merchant Shop ({shopItems.length})
         </button>
@@ -131,13 +132,14 @@ export default function Shop({
             soundManager.playClick();
             setTab('inventory');
           }}
-          className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+          className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 focus-ring ${
             tab === 'inventory'
-              ? 'bg-white dark:bg-zinc-800 text-amber-500 shadow-ios-sm'
+              ? 'bg-white dark:bg-ink-800 text-amber-500 shadow-ios-sm'
               : 'text-ink-400 hover:text-ink-200'
           }`}
+          aria-label="Your Purchases inventory"
         >
-          Hero Vault ({inventory.length})
+          Your Purchases ({inventory.length})
         </button>
       </div>
 
@@ -202,7 +204,7 @@ export default function Shop({
                             type="button"
                             onClick={() => handleBuy(item)}
                             disabled={!canAfford || isBuying}
-                            className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-xl font-semibold transition-all ${
+                            className={`flex items-center gap-1 text-xs px-3 py-1.5 rounded-xl font-semibold transition-all focus-ring ${
                               canAfford
                                 ? 'bg-amber-500/15 border border-amber-500/30 text-amber-500 hover:bg-amber-500/25'
                                 : 'bg-ink-900 border border-ink-800 text-ink-500 cursor-not-allowed'
@@ -241,7 +243,7 @@ export default function Shop({
                 <div className="w-14 h-14 rounded-2xl bg-ink-850 border border-ink-800 flex items-center justify-center mx-auto mb-3 shadow-ios-sm">
                   <Package className="w-7 h-7 text-ink-400" />
                 </div>
-                <p className="text-sm font-semibold text-ink-300">Your Hero Vault is empty.</p>
+                <p className="text-sm font-semibold text-ink-300">Your Purchases list is empty.</p>
                 <p className="text-xs text-ink-500 mt-1 font-medium">
                   Complete quests to earn gold, then acquire armor and titles.
                 </p>
@@ -293,11 +295,12 @@ export default function Shop({
                           type="button"
                           onClick={() => handleEquip(inv)}
                           disabled={isEquipping}
-                          className={`text-xs px-3 py-1 rounded-xl font-bold transition-all ${
+                          className={`text-xs px-3 py-1 rounded-xl font-bold transition-all focus-ring ${
                             inv.equipped
                               ? 'bg-ink-800 text-ink-300 hover:bg-ink-700'
                               : 'bg-amber-500/20 text-amber-400 border border-amber-500/40 hover:bg-amber-500/30'
                           }`}
+                          aria-label={`${inv.equipped ? 'Unequip' : 'Equip'} ${item.name}`}
                         >
                           {isEquipping ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin inline" />

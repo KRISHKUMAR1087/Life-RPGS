@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { CATEGORY_COLORS } from '@/lib/rpg';
 
 type StatRadarChartProps = {
   stats: {
@@ -20,11 +21,11 @@ export default function StatRadarChart({ stats, size = 260 }: StatRadarChartProp
 
   const statEntries = useMemo(
     () => [
-      { key: 'strength', label: 'STR', full: 'Strength', val: stats.strength, color: '#f43f5e' },
-      { key: 'intellect', label: 'INT', full: 'Intellect', val: stats.intellect, color: '#60a5fa' },
-      { key: 'vitality', label: 'VIT', full: 'Vitality', val: stats.vitality, color: '#34d399' },
-      { key: 'charisma', label: 'CHA', full: 'Charisma', val: stats.charisma, color: '#fbbf24' },
-      { key: 'dexterity', label: 'DEX', full: 'Dexterity', val: stats.dexterity, color: '#a78bfa' },
+      { key: 'strength', label: 'STR', full: 'Strength', val: stats.strength, color: CATEGORY_COLORS.strength },
+      { key: 'intellect', label: 'INT', full: 'Intellect', val: stats.intellect, color: CATEGORY_COLORS.intellect },
+      { key: 'vitality', label: 'VIT', full: 'Vitality', val: stats.vitality, color: CATEGORY_COLORS.vitality },
+      { key: 'charisma', label: 'CHA', full: 'Charisma', val: stats.charisma, color: CATEGORY_COLORS.charisma },
+      { key: 'dexterity', label: 'DEX', full: 'Dexterity', val: stats.dexterity, color: CATEGORY_COLORS.dexterity },
     ],
     [stats]
   );

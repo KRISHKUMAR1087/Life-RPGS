@@ -7,7 +7,6 @@ import {
   Flame,
   Trophy,
   Star,
-  Shield,
   Crown,
   Sparkles,
   Zap,
@@ -18,17 +17,29 @@ import {
   Save,
   Award,
   Layers,
+  Shield,
 } from 'lucide-react';
 import type { Profile, InventoryItem } from '@/lib/supabase';
-import { xpForLevel, getRankTitle, CATEGORIES } from '@/lib/rpg';
+import { xpForLevel, getRankTitle, CATEGORIES, formatUsername, calculatePlatformRanks, getCountry } from '@/lib/rpg';
 import StatRadarChart from '@/components/StatRadarChart';
 import { saveLocalProfile } from '@/lib/localStore';
 import { soundManager } from '@/lib/audio';
+import { useAuth } from '@/context/AuthContext';
 
 type CharacterPanelProps = {
   profile: Profile;
   inventory?: InventoryItem[];
+  variant?: 'vertical' | 'horizontal';
   onProfileUpdate?: (updated: Profile) => void;
+  peerProfiles?: Array<{
+    id?: string;
+    total_xp: number;
+    strength: number;
+    intellect: number;
+    vitality: number;
+    charisma: number;
+    dexterity: number;
+  }>;
 };
 
 const PRESTIGE_TIERS = [
@@ -43,12 +54,18 @@ const PRESTIGE_TIERS = [
 export default function CharacterPanel({
   profile,
   inventory = [],
+  variant = 'vertical',
   onProfileUpdate,
+  peerProfiles = [],
 }: CharacterPanelProps) {
+  const { isDemo } = useAuth();
+  const isDemoMode = isDemo || profile.id === 'demo-hero';
   const [viewMode, setViewMode] = useState<'radar' | 'bars'>('radar');
   const [editingMotto, setEditingMotto] = useState(false);
   const [mottoText, setMottoText] = useState(profile.motto || 'Aspiring adventurer forging their destiny');
 
+  const cleanUsername = formatUsername(profile.username);
+  const platformRanks = calculatePlatformRanks(profile, peerProfiles, { allowSyntheticBenchmarks: isDemoMode });
   const xpNeeded = xpForLevel(profile.level);
   const xpPercent = Math.min(100, (profile.xp / xpNeeded) * 100);
   const rankTitle = getRankTitle(profile.level);
@@ -66,6 +83,7 @@ export default function CharacterPanel({
         : cat.key === 'charisma'
         ? profile.charisma
         : profile.dexterity,
+    rank: platformRanks.categoryRanks[cat.key]?.rank || 1,
   }));
 
   const totalAttributePoints = attributes.reduce((sum, a) => sum + a.value, 0);
@@ -94,6 +112,114 @@ export default function CharacterPanel({
     saveLocalProfile(updated);
     if (onProfileUpdate) onProfileUpdate(updated);
     setEditingMotto(false);
+  }
+
+  if (variant === 'horizontal') {
+    return (
+      <div className="glass-card p-5 sm:p-6 shadow-ios-md border border-ink-800 bg-ink-900 space-y-6 rounded-3xl">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+          {/* Col 1: Hero Info */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              <div
+                className={`w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-ios-md transition-all ${frameBorderClass}`}
+              >
+                <span className="text-2xl font-heading font-extrabold text-white select-none">
+                  {cleanUsername.charAt(0).toUpperCase() || 'H'}
+                </span>
+              </div>
+              <div className="absolute -bottom-1 -right-1 bg-amber-500 text-white text-xs font-bold rounded-full w-7 h-7 flex items-center justify-center border-2 border-white dark:border-ink-950 shadow-ios-sm">
+                {profile.level}
+              </div>
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-base">{getCountry(profile.country).flag}</span>
+                <h2 className="font-heading text-lg font-bold text-ink-200 truncate">
+                  {cleanUsername}
+                </h2>
+                {equippedBadge && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" /> {equippedBadge.shop_items?.name}
+                  </span>
+                )}
+              </div>
+
+              <p className="text-xs text-amber-500 font-semibold flex items-center gap-1 mt-0.5">
+                <Crown className="w-3.5 h-3.5" />
+                {equippedTitle?.shop_items?.name ? equippedTitle.shop_items.name : rankTitle}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-ink-400 font-medium">
+                <span className="flex items-center gap-1">
+                  <Star className="w-3.5 h-3.5 text-amber-500" />
+                  {profile.total_xp.toLocaleString()} Total XP
+                </span>
+                <span className="flex items-center gap-1 text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px]">
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  Rank #{platformRanks.overallRank}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Col 2: XP Progression Bar */}
+          <div className="bg-ink-850/60 p-3.5 rounded-2xl border border-ink-800">
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-xs font-semibold text-ink-300">Level {profile.level} Progression</span>
+              <span className="text-xs text-ink-400 tabular-nums font-medium">
+                {profile.xp.toLocaleString()} / {xpNeeded.toLocaleString()} XP
+              </span>
+            </div>
+            <div className="h-2.5 bg-ink-900 rounded-full overflow-hidden relative">
+              <motion.div
+                className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full relative"
+                initial={{ width: 0 }}
+                animate={{ width: `${xpPercent}%` }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"
+                  style={{ backgroundSize: '200% 100%' }}
+                />
+              </motion.div>
+            </div>
+            <div className="flex justify-between items-center mt-1.5 text-[10px] text-ink-500 font-medium">
+              <span>Current: {rankTitle}</span>
+              <span>Next: Level {nextRankTier.level} ({nextRankTier.title})</span>
+            </div>
+          </div>
+
+          {/* Col 3: Stats Grid */}
+          <div className="grid grid-cols-3 gap-2.5">
+            <div className="bg-ink-850 rounded-2xl p-3 text-center border border-ink-800 shadow-ios-sm">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Coins className="w-4 h-4 text-amber-500" />
+                <span className="text-[11px] font-semibold text-ink-400">Gold</span>
+              </div>
+              <p className="text-base font-extrabold text-amber-500 tabular-nums">{profile.gold}</p>
+            </div>
+
+            <div className="bg-ink-850 rounded-2xl p-3 text-center border border-ink-800 shadow-ios-sm">
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <Flame className="w-4 h-4 text-flame-500" />
+                <span className="text-[11px] font-semibold text-ink-400">Streak</span>
+              </div>
+              <p className="text-base font-extrabold text-flame-500 tabular-nums">{profile.streak} Days</p>
+            </div>
+
+            <div className="bg-ink-850 rounded-2xl p-3 text-center border border-ink-800 shadow-ios-sm">
+              <div className="flex items-center justify-center gap-1.5 mb-1">
+                <Trophy className="w-4 h-4 text-azure-500" />
+                <span className="text-[11px] font-semibold text-ink-400">Best</span>
+              </div>
+              <p className="text-base font-extrabold text-azure-500 tabular-nums">{profile.longest_streak} Days</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

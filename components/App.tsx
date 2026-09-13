@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import { Loader2, Sword } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
+import LandingPage from '@/components/LandingPage';
 import AuthScreen from '@/components/AuthScreen';
 import Dashboard from '@/components/Dashboard';
 
 function AppContent() {
-  const { user, loading } = useAuth();
+  const { user, loading, loginDemo } = useAuth();
+  const [view, setView] = useState<'landing' | 'auth'>('landing');
 
   if (loading) {
     return (
@@ -22,7 +25,21 @@ function AppContent() {
     );
   }
 
-  return user ? <Dashboard /> : <AuthScreen />;
+  if (user) {
+    return <Dashboard />;
+  }
+
+  if (view === 'auth') {
+    return <AuthScreen onBackToLanding={() => setView('landing')} />;
+  }
+
+  return (
+    <LandingPage
+      onGetStarted={() => setView('auth')}
+      onSignIn={() => setView('auth')}
+      onDemoPlay={() => loginDemo('Hero Demo')}
+    />
+  );
 }
 
 export default function App() {

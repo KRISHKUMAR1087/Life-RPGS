@@ -1,4 +1,4 @@
-import { xpForLevel, type DifficultyKey } from './rpg';
+import { xpForLevel, formatUsername, getISTDateString, getISTWeekString, TAVERN_BOUNTIES, type TavernBounty, type DifficultyKey } from './rpg';
 import type { Profile, Quest, ShopItem, InventoryItem, CompleteQuestResult, PurchaseResult } from './supabase';
 
 export const SEED_SHOP_ITEMS: ShopItem[] = [
@@ -117,7 +117,11 @@ export const INITIAL_DEMO_QUESTS: Quest[] = [];
 export function getInitialDemoProfile(heroName = 'Hero'): Profile {
   return {
     id: 'demo-hero',
-    username: heroName || 'Hero',
+    username: formatUsername(heroName),
+    bio: 'On an epic quest to master daily habits, slay procrastination, and level up in real life!',
+    country: 'US',
+    is_public: true,
+    onboarding_completed: true,
     level: 1,
     xp: 0,
     total_xp: 0,
@@ -162,7 +166,11 @@ export function loadLocalProfile(heroName?: string): Profile {
   const raw = localStorage.getItem(STORAGE_KEYS.PROFILE);
   if (raw) {
     try {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return {
+        ...parsed,
+        username: formatUsername(parsed.username || heroName),
+      };
     } catch {
       // fallback
     }
@@ -177,17 +185,64 @@ export function saveLocalProfile(profile: Profile): void {
   localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
 }
 
+export function processISTQuestResets(quests: Quest[]): { updatedQuests: Quest[]; modified: boolean } {
+  const currentISTDate = getISTDateString();
+  const currentISTWeek = getISTWeekString();
+  let modified = false;
+
+  const updatedQuests = quests.map((q) => {
+    const freq = q.frequency || 'one_time';
+    if (q.status !== 'completed' || !q.completed_at || freq === 'one_time') {
+      return q;
+    }
+
+    const completedDateObj = new Date(q.completed_at);
+    const completedISTDate = getISTDateString(completedDateObj);
+    const completedISTWeek = getISTWeekString(completedDateObj);
+
+    if (freq === 'daily' && completedISTDate < currentISTDate) {
+      modified = true;
+      return {
+        ...q,
+        status: 'active',
+        completed_at: null,
+        quest_date: currentISTDate,
+      };
+    }
+
+    if (freq === 'weekly' && completedISTWeek < currentISTWeek) {
+      modified = true;
+      return {
+        ...q,
+        status: 'active',
+        completed_at: null,
+        quest_date: currentISTDate,
+      };
+    }
+
+    return q;
+  });
+
+  return { updatedQuests, modified };
+}
+
 export function loadLocalQuests(): Quest[] {
   if (typeof window === 'undefined') return [];
   const raw = localStorage.getItem(STORAGE_KEYS.QUESTS);
+  let quests = INITIAL_DEMO_QUESTS;
   if (raw) {
     try {
-      return JSON.parse(raw);
+      quests = JSON.parse(raw);
     } catch {
-      // fallback
+      quests = INITIAL_DEMO_QUESTS;
     }
   }
-  return [];
+
+  const { updatedQuests, modified } = processISTQuestResets(quests);
+  if (modified || !raw) {
+    saveLocalQuests(updatedQuests);
+  }
+  return updatedQuests;
 }
 
 export function saveLocalQuests(quests: Quest[]): void {
@@ -261,13 +316,13 @@ export function completeLocalQuest(questId: string): CompleteQuestResult {
     dexterity: profile.dexterity + (quest.category === 'dexterity' ? 1 : 0),
     streak: profile.streak + 1,
     longest_streak: Math.max(profile.longest_streak, profile.streak + 1),
-    last_active_date: new Date().toISOString().split('T')[0],
+    last_active_date: getISTDateString(),
   };
 
   saveLocalProfile(updatedProfile);
 
   const updatedQuests = quests.map((q) =>
-    q.id === questId ? { ...q, status: 'completed', completed_at: new Date().toISOString() } : q
+    q.id === questId ? { ...q, status: 'completed' as const, completed_at: new Date().toISOString() } : q
   );
   saveLocalQuests(updatedQuests);
 
@@ -373,3 +428,230 @@ export function addLocalVictoryBonus(bonus: { xp: number; gold: number }): Profi
   return updated;
 }
 
+export type RealmCompetitor = {
+  id: string;
+  username: string;
+  avatar: string;
+  baseLevel: number;
+  baseXp: number;
+  streak: number;
+  country?: string;
+  categoryXps: Record<string, number>;
+};
+
+export const INITIAL_DEMO_COMPETITORS: RealmCompetitor[] = [
+  {
+    id: 'hero-1',
+    username: 'Valerius_Titan',
+    avatar: '🛡️',
+    baseLevel: 18,
+    baseXp: 14200,
+    streak: 24,
+    country: 'US',
+    categoryXps: {
+      strength: 4500,
+      intellect: 1200,
+      vitality: 2800,
+      charisma: 1100,
+      dexterity: 1500,
+      wealth: 900,
+      creativity: 600,
+      mindfulness: 500,
+      productivity: 800,
+      wisdom: 300,
+    },
+  },
+  {
+    id: 'hero-2',
+    username: 'Elysia_Starweaver',
+    avatar: '✨',
+    baseLevel: 16,
+    baseXp: 11800,
+    streak: 19,
+    country: 'IN',
+    categoryXps: {
+      strength: 800,
+      intellect: 4200,
+      vitality: 1500,
+      charisma: 2100,
+      dexterity: 900,
+      wealth: 1100,
+      creativity: 3800,
+      mindfulness: 2500,
+      productivity: 1400,
+      wisdom: 3100,
+    },
+  },
+  {
+    id: 'hero-3',
+    username: 'Kaelen_Drake',
+    avatar: '🐉',
+    baseLevel: 14,
+    baseXp: 9400,
+    streak: 15,
+    country: 'GB',
+    categoryXps: {
+      strength: 3200,
+      intellect: 1500,
+      vitality: 1900,
+      charisma: 1200,
+      dexterity: 2900,
+      wealth: 2100,
+      creativity: 800,
+      mindfulness: 400,
+      productivity: 2500,
+      wisdom: 900,
+    },
+  },
+  {
+    id: 'hero-4',
+    username: 'Aura_Solis',
+    avatar: '🌞',
+    baseLevel: 12,
+    baseXp: 7600,
+    streak: 12,
+    country: 'CA',
+    categoryXps: {
+      strength: 900,
+      intellect: 2100,
+      vitality: 3400,
+      charisma: 2900,
+      dexterity: 800,
+      wealth: 1200,
+      creativity: 1400,
+      mindfulness: 3200,
+      productivity: 1900,
+      wisdom: 2200,
+    },
+  },
+  {
+    id: 'hero-5',
+    username: 'Balthazar_Wealthcraft',
+    avatar: '💰',
+    baseLevel: 11,
+    baseXp: 6800,
+    streak: 10,
+    country: 'DE',
+    categoryXps: {
+      strength: 600,
+      intellect: 2800,
+      vitality: 800,
+      charisma: 1900,
+      dexterity: 700,
+      wealth: 4600,
+      creativity: 900,
+      mindfulness: 600,
+      productivity: 3800,
+      wisdom: 1500,
+    },
+  },
+  {
+    id: 'hero-6',
+    username: 'Zephyr_Vance',
+    avatar: '⚡',
+    baseLevel: 9,
+    baseXp: 5100,
+    streak: 8,
+    country: 'JP',
+    categoryXps: {
+      strength: 1400,
+      intellect: 1900,
+      vitality: 1100,
+      charisma: 800,
+      dexterity: 3600,
+      wealth: 1100,
+      creativity: 2400,
+      mindfulness: 900,
+      productivity: 1800,
+      wisdom: 700,
+    },
+  },
+  {
+    id: 'hero-7',
+    username: 'Rowan_Ironheart',
+    avatar: '⚒️',
+    baseLevel: 8,
+    baseXp: 4200,
+    streak: 6,
+    country: 'AU',
+    categoryXps: {
+      strength: 3800,
+      intellect: 800,
+      vitality: 2100,
+      charisma: 600,
+      dexterity: 1200,
+      wealth: 900,
+      creativity: 500,
+      mindfulness: 400,
+      productivity: 1500,
+      wisdom: 600,
+    },
+  },
+  {
+    id: 'hero-8',
+    username: 'Lyra_Sage',
+    avatar: '🦉',
+    baseLevel: 7,
+    baseXp: 3400,
+    streak: 5,
+    country: 'FR',
+    categoryXps: {
+      strength: 500,
+      intellect: 3500,
+      vitality: 1200,
+      charisma: 1100,
+      dexterity: 600,
+      wealth: 800,
+      creativity: 1900,
+      mindfulness: 2800,
+      productivity: 1400,
+      wisdom: 3900,
+    },
+  },
+];
+
+export function getDemoCompetitors(): RealmCompetitor[] {
+  if (typeof window === 'undefined') return INITIAL_DEMO_COMPETITORS;
+  const raw = localStorage.getItem('life_rpg_demo_competitors');
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // fallback
+    }
+  }
+  saveDemoCompetitors(INITIAL_DEMO_COMPETITORS);
+  return INITIAL_DEMO_COMPETITORS;
+}
+
+export function saveDemoCompetitors(competitors: RealmCompetitor[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('life_rpg_demo_competitors', JSON.stringify(competitors));
+}
+
+export function getPlatformBounties(): TavernBounty[] {
+  if (typeof window === 'undefined') return TAVERN_BOUNTIES;
+  const raw = localStorage.getItem('life_rpg_platform_bounties') || localStorage.getItem('life_rpg_demo_bounties');
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // fallback
+    }
+  }
+  savePlatformBounties(TAVERN_BOUNTIES);
+  return TAVERN_BOUNTIES;
+}
+
+export function savePlatformBounties(bounties: TavernBounty[]): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('life_rpg_platform_bounties', JSON.stringify(bounties));
+}
+
+export function getDemoBounties(): TavernBounty[] {
+  return getPlatformBounties();
+}
+
+export function saveDemoBounties(bounties: TavernBounty[]): void {
+  savePlatformBounties(bounties);
+}

@@ -25,17 +25,22 @@ export default function FloatingRewards({ rewards, onClear }: FloatingRewardsPro
   return (
     <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-2 items-end pointer-events-none">
       <AnimatePresence>
-        {rewards.map((reward) => (
+        {rewards.map((reward, idx) => (
           <motion.div
             key={reward.id}
-            initial={{ opacity: 0, x: 50, scale: 0.8 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
+            initial={{ opacity: 0, x: 50, scale: 0.8, rotate: -4 }}
+            animate={{ opacity: 1, x: 0, scale: 1, rotate: [0, 3, -2, 0] }}
             exit={{ opacity: 0, y: -30 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg bg-ink-800/95 border ${reward.color} shadow-lg backdrop-blur-sm`}
+            transition={{
+              type: 'spring',
+              stiffness: 300,
+              damping: 20,
+              delay: idx * 0.15,
+            }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl bg-ink-900/95 border ${reward.color} shadow-ios-lg backdrop-blur-md`}
           >
             <span className="text-lg">{reward.icon}</span>
-            <span className={`text-sm font-semibold ${reward.color.includes('gold') ? 'text-gold-400' : 'text-ink-200'}`}>
+            <span className={`text-sm font-bold ${reward.color.includes('gold') ? 'text-amber-400' : 'text-azure-400'}`}>
               {reward.text}
             </span>
           </motion.div>
