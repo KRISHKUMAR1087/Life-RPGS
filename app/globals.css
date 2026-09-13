@@ -201,17 +201,25 @@
 
   /* Secondary Ghost Button */
   .btn-ghost {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.1);
     color: var(--color-text-subtle);
     padding: 0.5rem 1rem;
     border-radius: 0.875rem;
     transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
+  .dark .btn-ghost {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--color-text-subtle);
+  }
   .btn-ghost:hover {
     border-color: #f59e0b;
-    color: #fbbf24;
+    color: #d97706;
     background: rgba(245, 158, 11, 0.08);
+  }
+  .dark .btn-ghost:hover {
+    color: #fbbf24;
   }
 
   /* Input Field */
