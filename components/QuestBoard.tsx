@@ -621,16 +621,16 @@ export default function QuestBoard({
                   )}
                 </div>
 
-                {/* Category & Difficulty Selection */}
+                {/* Category & AI Difficulty Allocation */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-ink-300">Attribute Category</label>
+                    <label className="block text-xs font-semibold text-ink-300">Attribute Category *</label>
                     <div className="relative">
                       <select
                         value={category}
                         onChange={(e) => setCategory(e.target.value as CategoryKey)}
                         className="input-field text-sm appearance-none pr-8 cursor-pointer bg-ink-900 border-white/15"
-                        disabled={submitting}
+                        disabled={submitting || evaluatingAI}
                       >
                         {allCategories.map((c) => (
                           <option key={c.key} value={c.key}>
@@ -640,25 +640,25 @@ export default function QuestBoard({
                       </select>
                       <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
+                    <p className="text-[10px] text-ink-500">Stat attribute boosted upon completion</p>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-ink-300">Difficulty Tier</label>
-                    <div className="relative">
-                      <select
-                        value={difficulty}
-                        onChange={(e) => setDifficulty(e.target.value as DifficultyKey)}
-                        className="input-field text-sm appearance-none pr-8 cursor-pointer bg-ink-900 border-white/15"
-                        disabled={submitting}
-                      >
-                        {DIFFICULTIES.map((d) => (
-                          <option key={d.key} value={d.key}>
-                            {d.label} — +{d.xp} XP / +{d.gold} Gold
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-semibold text-ink-300">XP & Reward Allocation</label>
+                      <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        AI Managed
+                      </span>
                     </div>
+                    <div className="input-field text-sm bg-ink-950 border-white/10 flex items-center justify-between py-2 text-ink-300">
+                      <span className="capitalize font-bold text-amber-300">
+                        {aiEvaluation ? `${aiEvaluation.difficulty} Tier` : `${difficulty} (Pending AI)`}
+                      </span>
+                      <span className="text-xs font-semibold text-ink-400">
+                        +{aiEvaluation ? aiEvaluation.xp : getDifficulty(difficulty).xp} XP • +{aiEvaluation ? aiEvaluation.gold : getDifficulty(difficulty).gold} Gold
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-ink-500">XP and gold are allocated strictly by Gemini AI, not self-selected</p>
                   </div>
                 </div>
 
@@ -720,8 +720,8 @@ export default function QuestBoard({
         )}
       </AnimatePresence>
 
-      {/* Quests Content: 2 Blocks Side-by-Side */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+      {/* Quests Content: Unified Blocks */}
+      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6 items-start min-w-0">
         {/* BLOCK 1: Your Quests Unified Block */}
         <div className="glass-card p-4 sm:p-5 rounded-3xl border border-ink-800 bg-ink-900 space-y-4 shadow-ios-md h-full flex flex-col justify-between">
           {/* Header Row: Title on Left, Search Box on Right */}
@@ -820,7 +820,7 @@ export default function QuestBoard({
               <span>No quests found under this filter.</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[460px] overflow-y-auto scrollbar-thin scrollbar-thumb-ink-800 scrollbar-track-transparent pr-1.5">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 max-h-[460px] overflow-y-auto scrollbar-thin scrollbar-thumb-ink-800 scrollbar-track-transparent pr-1.5 min-w-0">
               <AnimatePresence mode="popLayout">
                 {filteredYourQuests.map((quest) => {
                   const catConfig = getCategory(quest.category, customCategories);
@@ -838,14 +838,14 @@ export default function QuestBoard({
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className={`p-4 border rounded-2xl transition-all flex flex-col justify-between space-y-3 group shadow-ios-sm ${
+                      className={`p-3.5 sm:p-4 border rounded-2xl transition-all flex flex-col justify-between space-y-3 group shadow-ios-sm min-w-0 overflow-hidden ${
                         isCompleted
-                          ? 'border-ink-800/60 bg-ink-950/40 opacity-70'
-                          : 'border-ink-800/80 bg-ink-950/70 hover:border-amber-500/40'
+                          ? 'border-ink-800/60 bg-ink-900/90 opacity-70'
+                          : 'border-ink-800 bg-ink-900/95 hover:border-amber-500/40'
                       }`}
                     >
-                      <div className="space-y-2.5 flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-2 flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[11px] font-bold text-amber-400 shrink-0">
                               +{xpVal} XP • +{goldVal} G
@@ -862,7 +862,7 @@ export default function QuestBoard({
                               </span>
                             )}
                           </div>
-                          <span className={`text-[11px] font-semibold shrink-0 ${catConfig.textColor}`}>
+                          <span className={`text-[10px] sm:text-[11px] font-semibold shrink-0 px-2 py-0.5 rounded-lg bg-ink-850 border border-ink-800/80 ${catConfig.textColor}`}>
                             {catConfig.label}
                           </span>
                         </div>
@@ -886,13 +886,13 @@ export default function QuestBoard({
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-ink-800/80">
+                      <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-ink-800/80 flex-wrap">
                         {!isCompleted ? (
                           <>
                             <button
                               type="button"
                               onClick={() => handleStartEdit(quest)}
-                              className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-ink-200 transition-all focus-ring"
+                              className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-ink-200 transition-all focus-ring shrink-0"
                               title="Edit quest"
                               aria-label={`Edit quest "${quest.title}"`}
                             >
@@ -907,7 +907,7 @@ export default function QuestBoard({
                                 onComplete(quest);
                               }}
                               disabled={isCompleting}
-                              className="px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring"
+                              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring shrink-0"
                               title="Complete Quest"
                               aria-label={`Complete quest "${quest.title}"`}
                             >
@@ -916,11 +916,11 @@ export default function QuestBoard({
                               ) : (
                                 <Check className="w-3.5 h-3.5" />
                               )}
-                              Complete
+                              <span>Complete</span>
                             </motion.button>
                           </>
                         ) : (
-                          <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
+                          <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20 shrink-0">
                             <Check className="w-3.5 h-3.5" /> Completed
                           </span>
                         )}
@@ -929,7 +929,7 @@ export default function QuestBoard({
                         <button
                           type="button"
                           onClick={() => handleInitiateDelete(quest.id)}
-                          className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center gap-1 ${
+                          className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center gap-1 shrink-0 ${
                             isDeleting
                               ? 'bg-flame-500/20 border-flame-500/60 text-flame-400 px-2.5'
                               : 'bg-ink-850 border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30'
@@ -1037,7 +1037,7 @@ export default function QuestBoard({
               <span>No Tavern Bounties found under this filter.</span>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[460px] overflow-y-auto scrollbar-thin scrollbar-thumb-ink-800 scrollbar-track-transparent pr-1.5">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3.5 max-h-[460px] overflow-y-auto scrollbar-thin scrollbar-thumb-ink-800 scrollbar-track-transparent pr-1.5 min-w-0">
               {filteredAcceptedBounties.map((quest) => {
                 const catConfig = getCategory(quest.category, customCategories);
                 const diffConfig = getDifficulty(quest.difficulty);
@@ -1048,18 +1048,18 @@ export default function QuestBoard({
                 return (
                   <div
                     key={quest.id}
-                    className={`p-4 border rounded-2xl flex flex-col justify-between space-y-3 shadow-ios-sm transition-all ${
+                    className={`p-3.5 sm:p-4 border rounded-2xl flex flex-col justify-between space-y-3 shadow-ios-sm transition-all min-w-0 overflow-hidden ${
                       isCompleted
-                        ? 'border-ink-800/60 bg-ink-950/40 opacity-70'
-                        : 'border-ink-800/80 bg-ink-950/70 hover:border-amber-500/40'
+                        ? 'border-ink-800/60 bg-ink-900/90 opacity-70'
+                        : 'border-ink-800 bg-ink-900/95 hover:border-amber-500/40'
                     }`}
                   >
-                    <div className="space-y-2.5 flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
+                    <div className="space-y-2 flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1.5 flex-wrap">
                         <span className="text-[11px] font-bold text-amber-400 shrink-0">
                           +{diffConfig.xp} XP • +{diffConfig.gold} G
                         </span>
-                        <span className={`text-[11px] font-semibold shrink-0 ${catConfig.textColor}`}>
+                        <span className={`text-[10px] sm:text-[11px] font-semibold shrink-0 px-2 py-0.5 rounded-lg bg-ink-850 border border-ink-800/80 ${catConfig.textColor}`}>
                           {catConfig.label}
                         </span>
                       </div>
@@ -1078,7 +1078,7 @@ export default function QuestBoard({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-ink-800/80">
+                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-ink-800/80 flex-wrap">
                       {!isCompleted ? (
                         <button
                           type="button"
@@ -1087,17 +1087,17 @@ export default function QuestBoard({
                             onComplete(quest);
                           }}
                           disabled={completingId === quest.id}
-                          className="px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring"
+                          className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring shrink-0"
                         >
                           {completingId === quest.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
                             <Check className="w-3.5 h-3.5" />
                           )}
-                          Complete
+                          <span>Complete</span>
                         </button>
                       ) : (
-                        <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
+                        <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20 shrink-0">
                           <Check className="w-3.5 h-3.5" /> Completed
                         </span>
                       )}
@@ -1106,7 +1106,7 @@ export default function QuestBoard({
                       <button
                         type="button"
                         onClick={() => handleInitiateDelete(quest.id)}
-                        className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center gap-1 ${
+                        className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center gap-1 shrink-0 ${
                           deletingId === quest.id
                             ? 'bg-flame-500/20 border-flame-500/60 text-flame-400 px-2.5'
                             : 'bg-ink-850 border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30'

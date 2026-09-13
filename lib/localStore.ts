@@ -282,16 +282,17 @@ export function completeLocalQuest(questId: string): CompleteQuestResult {
   const profile = loadLocalProfile();
 
   const rewardMap: Record<DifficultyKey, { xp: number; gold: number }> = {
-    easy: { xp: 50, gold: 10 },
-    medium: { xp: 120, gold: 25 },
-    hard: { xp: 250, gold: 50 },
-    epic: { xp: 500, gold: 100 },
+    easy: { xp: 50, gold: 1 },
+    medium: { xp: 100, gold: 2 },
+    hard: { xp: 250, gold: 5 },
+    epic: { xp: 500, gold: 10 },
   };
 
   const difficulty = (quest.difficulty as DifficultyKey) || 'medium';
   const standardReward = rewardMap[difficulty] ?? rewardMap.medium;
   const xpGain = quest.xp_reward || standardReward.xp;
-  const goldGain = quest.gold_reward || standardReward.gold;
+  // 1 gold per 50 XP crossed
+  const goldGain = quest.gold_reward !== undefined ? quest.gold_reward : Math.max(1, Math.floor(xpGain / 50));
 
   let currentXp = profile.xp + xpGain;
   let currentLevel = profile.level;
