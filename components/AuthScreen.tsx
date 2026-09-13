@@ -100,7 +100,7 @@ export default function AuthScreen({ onBackToLanding }: AuthScreenProps = {}) {
           </motion.div>
           
           <h1 className="text-3xl sm:text-4xl font-heading font-extrabold text-ink-200 tracking-tight">
-            LifeQuest
+            XpWin
           </h1>
           <p className="text-ink-400 text-sm mt-1.5 font-normal max-w-xs mx-auto">
             Turn your daily routines into epic adventures, earn XP, level up & build streaks.

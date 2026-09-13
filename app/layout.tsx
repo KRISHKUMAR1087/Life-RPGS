@@ -3,9 +3,9 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'LifeQuest — Turn Your Life Into an RPG',
+  title: 'XpWin — Turn Your Life Into an RPG',
   description:
-    'LifeQuest transforms your daily tasks into epic quests. Earn XP, level up your character, build streaks, and spend gold on rewards.',
+    'XpWin transforms your daily tasks into epic quests. Earn XP, level up your character, build streaks, and spend gold on rewards.',
 };
 
 export default function RootLayout({
