@@ -137,9 +137,9 @@ export default function Shop({
               ? 'bg-white dark:bg-ink-800 text-amber-500 shadow-ios-sm'
               : 'text-ink-400 hover:text-ink-200'
           }`}
-          aria-label="Hero Vault inventory"
+          aria-label="Your Purchases inventory"
         >
-          Hero Vault ({inventory.length})
+          Your Purchases ({inventory.length})
         </button>
       </div>
 
@@ -243,7 +243,7 @@ export default function Shop({
                 <div className="w-14 h-14 rounded-2xl bg-ink-850 border border-ink-800 flex items-center justify-center mx-auto mb-3 shadow-ios-sm">
                   <Package className="w-7 h-7 text-ink-400" />
                 </div>
-                <p className="text-sm font-semibold text-ink-300">Your Hero Vault is empty.</p>
+                <p className="text-sm font-semibold text-ink-300">Your Purchases list is empty.</p>
                 <p className="text-xs text-ink-500 mt-1 font-medium">
                   Complete quests to earn gold, then acquire armor and titles.
                 </p>
