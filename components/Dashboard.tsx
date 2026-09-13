@@ -18,6 +18,7 @@ import {
   TrendingUp,
   UserCog,
   Trophy,
+  ChevronDown,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -308,7 +309,7 @@ export default function Dashboard() {
     description: string;
     category: CategoryKey;
     difficulty: DifficultyKey;
-    frequency?: 'one_time' | 'daily' | 'weekly';
+    frequency?: string;
     ai_badge?: string;
     ai_rationale?: string;
     xp_reward?: number;
@@ -711,39 +712,76 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Desktop Navigation Menu Bar */}
-          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-0.5 xl:gap-1 bg-ink-900/90 border border-white/10 p-1 rounded-2xl shadow-inner backdrop-blur-2xl whitespace-nowrap">
-            {NAV_ITEMS.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => {
-                    soundManager.playClick();
-                    setActiveTab(item.id);
-                  }}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`px-2.5 xl:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap shrink-0 ${
-                    isActive
-                      ? 'bg-amber-500 text-ink-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.35)]'
-                      : 'text-ink-400 hover:text-ink-100 hover:bg-white/5'
-                  }`}
-                >
-                  <Icon className="w-3.5 h-3.5 shrink-0" />
-                  <span>{item.label}</span>
-                </button>
-              );
-            })}
-          </nav>
+          {/* Unified Centered Navigation Menu Button */}
+          <div className="relative flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              className="ios-glass border border-white/10 px-4 py-2 rounded-2xl flex items-center gap-2 text-ink-300 hover:text-ink-100 hover:bg-white/5 transition-all focus-ring shadow-ios-sm font-bold text-sm"
+              aria-expanded={mobileMenuOpen}
+            >
+              <Menu className="w-4 h-4" />
+              <span>Menu</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu */}
+            <AnimatePresence>
+              {mobileMenuOpen && (
+                <>
+                  {/* Backdrop for closing */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setMobileMenuOpen(false)}
+                  />
+                  
+                  {/* Floating Menu */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-64 ios-glass border border-white/20 p-2 rounded-3xl shadow-ios-lg bg-ink-900/95 z-50 flex flex-col gap-1"
+                  >
+                    <div className="px-3 py-2 text-[10px] font-extrabold text-amber-500/50 uppercase tracking-wider mb-1">
+                      Realm Navigation
+                    </div>
+                    {NAV_ITEMS.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            soundManager.playClick();
+                            setActiveTab(item.id);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`w-full px-4 py-3 rounded-2xl text-sm font-bold flex items-center justify-between transition-all ${
+                            isActive
+                              ? 'bg-amber-500 text-ink-950 shadow-ios-md'
+                              : 'text-ink-300 hover:text-ink-100 hover:bg-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <Icon className="w-4 h-4" />
+                            <span>{item.label}</span>
+                          </div>
+                          {isActive && <Sparkles className="w-4 h-4 fill-current" />}
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Controls: Music Player, Theme, Logout */}
-          <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
+          <div className="flex items-center justify-end gap-2 sm:gap-2.5 flex-shrink-0 min-w-0">
             <MusicPlayer />
-
             <ThemeToggle />
-
             <button
               type="button"
               onClick={() => {
@@ -757,92 +795,8 @@ export default function Dashboard() {
               <LogOut className="w-3.5 h-3.5 text-flame-400 shrink-0" />
               <span className="hidden sm:inline">Logout</span>
             </button>
-
-            {/* Mobile Menu Toggle Button */}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen((prev) => !prev)}
-              className="lg:hidden p-2 rounded-xl border border-ink-800 bg-ink-850 text-ink-300 hover:text-ink-100 focus-ring"
-              aria-expanded={mobileMenuOpen}
-              aria-label="Toggle navigation menu"
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
           </div>
         </div>
-
-        {/* Floating iOS-Style Centered Mobile Navigation Popover */}
-        <AnimatePresence>
-          {mobileMenuOpen && (
-            <div
-              className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-start justify-center pt-20 px-4"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setMobileMenuOpen(false);
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: -20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -20 }}
-                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-                className="w-full max-w-sm ios-glass p-4 rounded-3xl border border-white/20 dark:border-white/10 shadow-ios-lg space-y-1.5 bg-ink-900/95"
-              >
-                <div className="flex items-center justify-between px-3 py-1 mb-1 border-b border-white/10 pb-2">
-                  <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider">Realm Navigation</span>
-                  <button
-                    type="button"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-ink-400 hover:text-ink-200 p-1 focus-ring rounded-lg"
-                    aria-label="Close menu"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {NAV_ITEMS.map((item) => {
-                  const Icon = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        soundManager.playClick();
-                        setActiveTab(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                      aria-current={isActive ? 'page' : undefined}
-                      className={`w-full px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-between transition-all ${
-                        isActive
-                          ? 'bg-amber-500 text-ink-950 font-black shadow-ios-md'
-                          : 'text-ink-300 hover:text-ink-100 hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Icon className="w-4 h-4" />
-                        <span>{item.label}</span>
-                      </div>
-                      {isActive && <Sparkles className="w-4 h-4 fill-current" />}
-                    </button>
-                  );
-                })}
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    soundManager.playClick();
-                    setMobileMenuOpen(false);
-                    signOut();
-                  }}
-                  className="w-full px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-3 transition-all text-flame-400 hover:text-flame-300 bg-flame-500/10 border border-flame-500/25 cursor-pointer mt-2"
-                >
-                  <LogOut className="w-4 h-4 text-flame-400" />
-                  <span>Logout</span>
-                </button>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
       </header>
 
       {/* Main Tab Content */}

@@ -43,7 +43,7 @@ type QuestBoardProps = {
     description: string;
     category: CategoryKey;
     difficulty: DifficultyKey;
-    frequency?: 'one_time' | 'daily' | 'weekly';
+    frequency?: string;
     ai_badge?: string;
     ai_rationale?: string;
     xp_reward?: number;
@@ -76,7 +76,8 @@ export default function QuestBoard({
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<CategoryKey>('strength');
   const [difficulty, setDifficulty] = useState<DifficultyKey>('medium');
-  const [frequency, setFrequency] = useState<'one_time' | 'daily' | 'weekly'>('daily');
+  const [frequency, setFrequency] = useState<string>('daily');
+  const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [aiEvaluation, setAiEvaluation] = useState<AIEvaluationResult | null>(null);
   const [evaluatingAI, setEvaluatingAI] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -168,30 +169,6 @@ export default function QuestBoard({
     });
   }, [quests, bountyTitles, bountyStatusFilter, bountyCategoryFilter, bountyDifficultyFilter, bountySearchQuery]);
 
-  async function handleAIEvaluate() {
-    if (!title.trim()) {
-      setError('Please provide a quest title before running AI evaluation.');
-      return;
-    }
-    setError(null);
-    setEvaluatingAI(true);
-    soundManager.playClick();
-
-    try {
-      const res = await evaluateQuestAI(title, category, description.slice(0, 75));
-      setAiEvaluation(res);
-      setDifficulty(res.difficulty);
-      if (res.attribute && CATEGORIES.some((c) => c.key === res.attribute)) {
-        setCategory(res.attribute as CategoryKey);
-      }
-      soundManager.playEquip();
-    } catch {
-      setError('AI evaluation temporary error, standard rewards applied.');
-    } finally {
-      setEvaluatingAI(false);
-    }
-  }
-
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!title.trim()) {
@@ -204,28 +181,53 @@ export default function QuestBoard({
       setError('Quest title cannot exceed 100 characters.');
       return;
     }
+    if (frequency === 'weekly' && selectedDays.length === 0) {
+      soundManager.playValidationErrorSound();
+      setError('Please select at least one day for weekly quests.');
+      return;
+    }
     setError(null);
     setSubmitting(true);
-    soundManager.playSaveSound();
+    soundManager.playClick();
 
     try {
-      // If AI evaluation hasn't been run yet, automatically evaluate with Gemini API
       let evaluation = aiEvaluation;
+      
+      // Step 1: If not evaluated, evaluate first and pause for user to review
       if (!evaluation) {
+        setEvaluatingAI(true);
         try {
           evaluation = await evaluateQuestAI(
             title.trim(),
             category,
             description.trim().slice(0, 75)
           );
+          if (evaluation) {
+            setAiEvaluation(evaluation);
+            setDifficulty(evaluation.difficulty);
+            if (evaluation.attribute && CATEGORIES.some((c) => c.key === evaluation?.attribute)) {
+              setCategory(evaluation.attribute as CategoryKey);
+            }
+          }
+          soundManager.playEquip();
+          setEvaluatingAI(false);
+          setSubmitting(false);
+          return; // Pause here so user can see AI results and then click "Accept Quest"
         } catch {
-          // fallback handled in evaluateQuestAI
+          // Fallback handled in evaluateQuestAI but if it totally fails:
+          setEvaluatingAI(false);
         }
       }
 
+      // Step 2: Actually submit
+      soundManager.playSaveSound();
       const allocatedXp = evaluation?.xp || getDifficulty(difficulty).xp;
       const allocatedGold = evaluation?.gold || getDifficulty(difficulty).gold;
       const allocatedDifficulty = evaluation?.difficulty || difficulty;
+
+      const finalFrequency = frequency === 'weekly' 
+        ? `weekly_${selectedDays.sort().join('_')}` 
+        : frequency;
 
       if (editingQuest && onEdit) {
         await onEdit({
@@ -234,7 +236,7 @@ export default function QuestBoard({
           description: description.trim().slice(0, 75) || null,
           category,
           difficulty: allocatedDifficulty,
-          frequency,
+          frequency: finalFrequency,
           ai_badge: evaluation?.badge || editingQuest.ai_badge,
           ai_rationale: evaluation?.rationale || editingQuest.ai_rationale,
           xp_reward: allocatedXp,
@@ -247,7 +249,7 @@ export default function QuestBoard({
           description: description.trim().slice(0, 75),
           category,
           difficulty: allocatedDifficulty,
-          frequency,
+          frequency: finalFrequency,
           ai_badge: evaluation?.badge || 'Hero Task',
           ai_rationale: evaluation?.rationale || 'AI calculated reward based on effort.',
           xp_reward: allocatedXp,
@@ -256,6 +258,7 @@ export default function QuestBoard({
       }
       setTitle('');
       setDescription('');
+      setSelectedDays([]);
       setAiEvaluation(null);
       setShowForm(false);
     } catch {
@@ -290,7 +293,15 @@ export default function QuestBoard({
     setDescription(quest.description || '');
     setCategory(quest.category as CategoryKey);
     setDifficulty(quest.difficulty as DifficultyKey);
-    setFrequency(quest.frequency || 'daily');
+    const freq = quest.frequency || 'daily';
+    if (freq.startsWith('weekly_')) {
+      setFrequency('weekly');
+      const days = freq.replace('weekly_', '').split('_').map(Number);
+      setSelectedDays(days);
+    } else {
+      setFrequency(freq);
+      setSelectedDays([]);
+    }
     if (quest.ai_badge) {
       setAiEvaluation({
         xp: quest.xp_reward || getDifficulty(quest.difficulty).xp,
@@ -506,10 +517,6 @@ export default function QuestBoard({
                       {editingQuest ? 'Edit Quest Details' : 'Forge a New Quest'}
                     </h3>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-xl border border-amber-500/20">
-                    <Bot className="w-3.5 h-3.5" />
-                    <span>Gemini 3.6 Flash</span>
-                  </div>
                 </div>
 
                 {error && (
@@ -534,10 +541,13 @@ export default function QuestBoard({
                     type="text"
                     value={title}
                     maxLength={100}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => {
+                      setTitle(e.target.value);
+                      if (!editingQuest) setAiEvaluation(null);
+                    }}
                     placeholder="e.g. 50 Pushups or Complete React Chapter"
                     className="input-field text-sm"
-                    disabled={submitting || evaluatingAI}
+                    disabled={submitting}
                   />
                 </div>
 
@@ -557,68 +567,16 @@ export default function QuestBoard({
                   </div>
                   <textarea
                     value={description}
-                    onChange={(e) => setDescription(e.target.value.slice(0, 75))}
+                    onChange={(e) => {
+                      setDescription(e.target.value.slice(0, 75));
+                      if (!editingQuest) setAiEvaluation(null);
+                    }}
                     maxLength={75}
                     placeholder="Brief note or condition (e.g. Deep focus without distractions)"
                     rows={2}
                     className="input-field text-sm resize-none"
-                    disabled={submitting || evaluatingAI}
+                    disabled={submitting}
                   />
-                </div>
-
-                {/* AI Auto-Evaluate Sparkle Button & Results Pill */}
-                <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/25 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
-                      <div>
-                        <div className="text-xs font-bold text-amber-300">AI Dungeon Master Valuation</div>
-                        <div className="text-[10px] text-ink-400">
-                          Evaluates effort to balance XP & gold rewards
-                        </div>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={handleAIEvaluate}
-                      disabled={evaluatingAI || !title.trim()}
-                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-ink-950 text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all disabled:opacity-50 shadow-ios-sm self-start sm:self-auto"
-                    >
-                      {evaluatingAI ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Zap className="w-3.5 h-3.5 fill-ink-950" />
-                      )}
-                      <span>{evaluatingAI ? 'Evaluating...' : '⚡ AI Auto-Evaluate'}</span>
-                    </button>
-                  </div>
-
-                  {aiEvaluation && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="p-2.5 rounded-xl bg-ink-850/90 border border-amber-400/40 text-xs space-y-1.5"
-                    >
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-300 font-bold text-[10px] border border-amber-500/40">
-                          Badge: {aiEvaluation.badge}
-                        </span>
-                        <span className="text-emerald2-400 font-bold">
-                          +{aiEvaluation.xp} XP
-                        </span>
-                        <span className="text-amber-400 font-bold">
-                          +{aiEvaluation.gold} Gold
-                        </span>
-                        <span className="text-ink-400 text-[10px] capitalize">
-                          Tier: {aiEvaluation.difficulty}
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-ink-300 italic font-normal">
-                        &quot;{aiEvaluation.rationale}&quot;
-                      </p>
-                    </motion.div>
-                  )}
                 </div>
 
                 {/* Category & AI Difficulty Allocation */}
@@ -628,9 +586,12 @@ export default function QuestBoard({
                     <div className="relative">
                       <select
                         value={category}
-                        onChange={(e) => setCategory(e.target.value as CategoryKey)}
+                        onChange={(e) => {
+                          setCategory(e.target.value as CategoryKey);
+                          if (!editingQuest) setAiEvaluation(null);
+                        }}
                         className="input-field text-sm appearance-none pr-8 cursor-pointer bg-ink-900 border-white/15"
-                        disabled={submitting || evaluatingAI}
+                        disabled={submitting}
                       >
                         {allCategories.map((c) => (
                           <option key={c.key} value={c.key}>
@@ -652,10 +613,10 @@ export default function QuestBoard({
                     </div>
                     <div className="input-field text-sm bg-ink-950 border-white/10 flex items-center justify-between py-2 text-ink-300">
                       <span className="capitalize font-bold text-amber-300">
-                        {aiEvaluation ? `${aiEvaluation.difficulty} Tier` : `${difficulty} (Pending AI)`}
+                        {aiEvaluation ? `${aiEvaluation.difficulty} Tier` : 'Pending AI Evaluation'}
                       </span>
                       <span className="text-xs font-semibold text-ink-400">
-                        +{aiEvaluation ? aiEvaluation.xp : getDifficulty(difficulty).xp} XP • +{aiEvaluation ? aiEvaluation.gold : getDifficulty(difficulty).gold} Gold
+                        {aiEvaluation ? `+${aiEvaluation.xp} XP • +${aiEvaluation.gold} Gold` : '? XP • ? Gold'}
                       </span>
                     </div>
                     <p className="text-[10px] text-ink-500">XP and gold are allocated strictly by Gemini AI, not self-selected</p>
@@ -673,13 +634,16 @@ export default function QuestBoard({
                   <div className="grid grid-cols-3 gap-2">
                     {[
                       { key: 'daily', label: '🔁 Daily IST', desc: 'Resets midnight IST' },
-                      { key: 'weekly', label: '📅 Weekly IST', desc: 'Resets Monday IST' },
+                      { key: 'weekly', label: '📅 Weekly IST', desc: 'Select days below' },
                       { key: 'one_time', label: '⚡ One-Time', desc: 'Single completion' },
                     ].map((f) => (
                       <button
                         key={f.key}
                         type="button"
-                        onClick={() => setFrequency(f.key as 'one_time' | 'daily' | 'weekly')}
+                        onClick={() => {
+                          setFrequency(f.key);
+                          if (f.key !== 'weekly') setSelectedDays([]);
+                        }}
                         className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all text-center flex flex-col items-center justify-center gap-0.5 ${
                           frequency === f.key
                             ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 shadow-ios-sm'
@@ -691,6 +655,41 @@ export default function QuestBoard({
                       </button>
                     ))}
                   </div>
+                  
+                  <AnimatePresence>
+                    {frequency === 'weekly' && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="flex justify-between items-center gap-1 mt-2 overflow-hidden"
+                      >
+                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => {
+                          const isSelected = selectedDays.includes(idx);
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedDays(selectedDays.filter(d => d !== idx));
+                                } else {
+                                  setSelectedDays([...selectedDays, idx]);
+                                }
+                              }}
+                              className={`w-9 h-9 rounded-full text-xs font-bold transition-all border ${
+                                isSelected
+                                  ? 'bg-amber-500 text-ink-950 border-amber-400'
+                                  : 'bg-ink-900 text-ink-400 border-ink-800 hover:border-ink-600'
+                              }`}
+                            >
+                              {day}
+                            </button>
+                          );
+                        })}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="flex justify-end gap-2.5 pt-2">
@@ -710,8 +709,8 @@ export default function QuestBoard({
                     disabled={submitting || evaluatingAI}
                     className="btn-primary px-5 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5"
                   >
-                    {submitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                    {editingQuest ? 'Save Changes' : 'Accept Quest'}
+                    {(submitting || evaluatingAI) && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                    {!aiEvaluation ? 'Evaluate Quest' : (editingQuest ? 'Save Changes' : 'Accept Quest')}
                   </button>
                 </div>
               </form>
