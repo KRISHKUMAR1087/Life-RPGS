@@ -830,11 +830,6 @@ export default function QuestBoard({
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[11px] font-bold text-amber-400 shrink-0">
-                              +{diffConfig.xp} XP • +{diffConfig.gold} G
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-1 flex-wrap">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-bold text-amber-400">
                               +{xpVal} XP • +{goldVal} G
                             </span>
                             {quest.frequency && quest.frequency !== 'one_time' && (
@@ -843,7 +838,7 @@ export default function QuestBoard({
                               </span>
                             )}
                             {quest.ai_badge && (
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-400/30 flex items-center gap-0.5">
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-400/30 flex items-center gap-0.5 shrink-0">
                                 <Sparkles className="w-2.5 h-2.5" />
                                 {quest.ai_badge}
                               </span>
