@@ -1,4 +1,4 @@
-DO $ $
+DO $$
 DECLARE
     r record;
 BEGIN
@@ -12,4 +12,4 @@ BEGIN
             EXECUTE 'ALTER TABLE quests DROP CONSTRAINT ' || quote_ident(r.conname);
         END IF;
     END LOOP;
-END $ $;
+END $$;
