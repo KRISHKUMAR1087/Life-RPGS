@@ -221,6 +221,10 @@ class SoundManager {
     osc2.stop(now + 0.25);
   }
 
+  public playCoin(): void {
+    this.playCoinSound();
+  }
+
   // Play an equipment click / gear equip sound
   public playEquipSound(): void {
     if (this.muted) return;
@@ -243,6 +247,10 @@ class SoundManager {
 
     osc.start(now);
     osc.stop(now + 0.12);
+  }
+
+  public playEquip(): void {
+    this.playEquipSound();
   }
 
   // Play a Boss Strike slash sound

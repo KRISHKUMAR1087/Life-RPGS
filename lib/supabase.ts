@@ -19,6 +19,7 @@ export type Profile = {
   last_active_date: string | null;
   avatar_url: string | null;
   created_at: string;
+  motto?: string | null;
 };
 
 export type Quest = {
@@ -32,6 +33,10 @@ export type Quest = {
   completed_at: string | null;
   quest_date: string;
   created_at: string;
+  ai_badge?: string;
+  ai_rationale?: string;
+  xp_reward?: number;
+  gold_reward?: number;
 };
 
 export type ShopItem = {

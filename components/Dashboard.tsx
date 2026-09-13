@@ -18,7 +18,9 @@ import {
   VolumeX,
   Sparkles,
   Zap,
+  ShieldAlert,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import {
   supabase,
@@ -215,6 +217,10 @@ export default function Dashboard() {
     description: string;
     category: CategoryKey;
     difficulty: DifficultyKey;
+    ai_badge?: string;
+    ai_rationale?: string;
+    xp_reward?: number;
+    gold_reward?: number;
   }) {
     if (!isOnline && !isDemoMode) {
       showToast('Cannot add quest while offline.', 'error');
@@ -239,6 +245,10 @@ export default function Dashboard() {
           completed_at: null,
           quest_date: new Date().toISOString().split('T')[0],
           created_at: new Date().toISOString(),
+          ai_badge: data.ai_badge,
+          ai_rationale: data.ai_rationale,
+          xp_reward: data.xp_reward,
+          gold_reward: data.gold_reward,
         };
         const updated = [newQuest, ...current];
         saveLocalQuests(updated);
@@ -252,6 +262,10 @@ export default function Dashboard() {
         description: data.description || null,
         category: data.category,
         difficulty: data.difficulty,
+        ai_badge: data.ai_badge,
+        ai_rationale: data.ai_rationale,
+        xp_reward: data.xp_reward,
+        gold_reward: data.gold_reward,
       });
 
       if (error) throw error;
@@ -562,7 +576,7 @@ export default function Dashboard() {
           </div>
 
           {/* Desktop Navigation Menu Bar */}
-          <nav className="hidden lg:flex items-center gap-1.5 bg-ink-900/80 border border-ink-800/80 p-1.5 rounded-2xl shadow-inner">
+          <nav className="hidden lg:flex items-center gap-1.5 bg-ink-900/90 border border-white/10 p-1.5 rounded-2xl shadow-inner backdrop-blur-2xl">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -574,10 +588,10 @@ export default function Dashboard() {
                     soundManager.playClick();
                     setActiveTab(item.id);
                   }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 ${
                     isActive
-                      ? 'bg-ink-800 text-amber-400 shadow-sm border border-amber-500/30'
-                      : 'text-ink-400 hover:text-ink-200 hover:bg-ink-850/50'
+                      ? 'bg-amber-500 text-ink-950 shadow-[0_0_15px_rgba(245,158,11,0.35)]'
+                      : 'text-ink-400 hover:text-ink-100 hover:bg-white/5'
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
@@ -587,11 +601,20 @@ export default function Dashboard() {
             })}
           </nav>
 
-          {/* Controls, Music Player, Theme, Profile */}
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
+          {/* Controls, Music Player, Theme, Admin, Logout */}
+          <div className="flex items-center gap-2 sm:gap-3">
             <MusicPlayer onToast={showToast} />
 
             <ThemeToggle />
+
+            <Link
+              href="/admin"
+              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm hover:border-amber-500/40 hover:text-amber-300"
+              title="Admin Command Center (Realm Master)"
+            >
+              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden xl:inline">Admin</span>
+            </Link>
 
             <button
               type="button"
@@ -599,7 +622,7 @@ export default function Dashboard() {
                 soundManager.playClick();
                 signOut();
               }}
-              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm"
+              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm text-ink-400 hover:text-flame-400"
               aria-label="Sign out"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -651,6 +674,15 @@ export default function Dashboard() {
                   </button>
                 );
               })}
+
+              <Link
+                href="/admin"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all text-amber-300 bg-amber-500/10 border border-amber-500/25"
+              >
+                <ShieldAlert className="w-4 h-4 text-amber-400" />
+                <span>Admin Command Center</span>
+              </Link>
             </motion.div>
           )}
         </AnimatePresence>
