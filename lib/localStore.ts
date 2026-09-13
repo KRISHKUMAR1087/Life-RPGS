@@ -210,7 +210,7 @@ export function processISTQuestResets(quests: Quest[]): { updatedQuests: Quest[]
       };
     }
 
-    if (freq === 'weekly' && completedISTWeek < currentISTWeek) {
+    if (freq.startsWith('weekly') && completedISTWeek < currentISTWeek) {
       modified = true;
       return {
         ...q,
