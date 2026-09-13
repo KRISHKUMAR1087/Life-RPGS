@@ -45,16 +45,8 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
     const cleanEmail = email.trim().toLowerCase();
     const cleanPass = passkey.trim();
 
-    // Passkey is read from environment variable — never hardcoded in source.
-    // Set NEXT_PUBLIC_ADMIN_PASSKEY in your .env.local to enable admin access.
-    const configuredPasskey = process.env.NEXT_PUBLIC_ADMIN_PASSKEY;
-
-    if (!configuredPasskey) {
-      return {
-        error:
-          'Admin portal is not configured. Set NEXT_PUBLIC_ADMIN_PASSKEY in your environment.',
-      };
-    }
+    // Passkey is read from environment variable or falls back to your configured secret.
+    const configuredPasskey = process.env.NEXT_PUBLIC_ADMIN_PASSKEY || 'XpWinUnstop@4312';
 
     if (cleanEmail !== 'admin@lifequest.realm' || cleanPass !== configuredPasskey) {
       return { error: 'Invalid admin email or passkey. Access denied.' };
