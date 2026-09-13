@@ -826,6 +826,11 @@ export default function QuestBoard({
                           : 'border-ink-800/80 bg-ink-950/70 hover:border-amber-500/40'
                       }`}
                     >
+                      <div className="space-y-2.5 flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-bold text-amber-400 shrink-0">
+                              +{diffConfig.xp} XP • +{diffConfig.gold} G
                       <div className="space-y-2">
                         <div className="flex items-center justify-between gap-1 flex-wrap">
                           <div className="flex items-center gap-1.5">
@@ -833,7 +838,7 @@ export default function QuestBoard({
                               +{xpVal} XP • +{goldVal} G
                             </span>
                             {quest.frequency && quest.frequency !== 'one_time' && (
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
                                 {quest.frequency === 'daily' ? '🔁 Daily' : '📅 Weekly'}
                               </span>
                             )}
@@ -844,21 +849,21 @@ export default function QuestBoard({
                               </span>
                             )}
                           </div>
-                          <span className={`text-xs font-semibold ${catConfig.textColor}`}>
+                          <span className={`text-[11px] font-semibold shrink-0 ${catConfig.textColor}`}>
                             {catConfig.label}
                           </span>
                         </div>
 
                         <div>
                           <h4
-                            className={`text-xs font-bold transition-colors line-clamp-1 ${
+                            className={`text-xs font-bold transition-colors line-clamp-2 break-words ${
                               isCompleted ? 'line-through text-ink-400' : 'text-ink-200 group-hover:text-amber-400'
                             }`}
                           >
                             {quest.title}
                           </h4>
                           {quest.description && (
-                            <p className="text-[11px] text-ink-400 line-clamp-2 mt-0.5">{quest.description}</p>
+                            <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 break-words">{quest.description}</p>
                           )}
                           {quest.ai_rationale && (
                             <p className="text-[10px] text-amber-300/80 italic font-mono mt-0.5">
@@ -1036,26 +1041,26 @@ export default function QuestBoard({
                         : 'border-ink-800/80 bg-ink-950/70 hover:border-amber-500/40'
                     }`}
                   >
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="text-[11px] font-bold text-amber-400">
-                          +{xpVal} XP • +{goldVal} G
+                    <div className="space-y-2.5 flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-[11px] font-bold text-amber-400 shrink-0">
+                          +{diffConfig.xp} XP • +{diffConfig.gold} G
                         </span>
-                        <span className={`text-xs font-semibold ${catConfig.textColor}`}>
+                        <span className={`text-[11px] font-semibold shrink-0 ${catConfig.textColor}`}>
                           {catConfig.label}
                         </span>
                       </div>
 
                       <div>
                         <h4
-                          className={`text-xs font-bold transition-colors line-clamp-1 ${
+                          className={`text-xs font-bold transition-colors line-clamp-2 break-words ${
                             isCompleted ? 'line-through text-ink-400' : 'text-ink-200'
                           }`}
                         >
                           {quest.title}
                         </h4>
                         {quest.description && (
-                          <p className="text-[11px] text-ink-400 line-clamp-2 mt-0.5">{quest.description}</p>
+                          <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 break-words">{quest.description}</p>
                         )}
                       </div>
                     </div>
