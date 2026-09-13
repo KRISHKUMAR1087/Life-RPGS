@@ -34,7 +34,7 @@ export type Quest = {
   category: string;
   difficulty: string;
   status: string;
-  frequency?: 'one_time' | 'daily' | 'weekly';
+  frequency?: string;
   completed_at: string | null;
   quest_date: string;
   created_at: string;
