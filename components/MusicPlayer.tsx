@@ -27,8 +27,8 @@ export default function MusicPlayer() {
       onClick={handleToggleMusic}
       className={`relative group flex items-center justify-center w-10 h-10 rounded-2xl transition-all duration-300 border flex-shrink-0 ${
         isPlaying
-          ? 'bg-amber-500/15 border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.35)] text-amber-300'
-          : 'bg-ink-900/60 backdrop-blur-xl border-white/10 text-ink-400 hover:text-amber-300 hover:border-amber-500/40 hover:bg-ink-850/80 shadow-ios-sm'
+          ? 'bg-amber-500/15 border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.35)] text-amber-600 dark:text-amber-300'
+          : 'bg-white/80 dark:bg-ink-900/60 backdrop-blur-xl border-black/10 dark:border-white/10 text-slate-700 dark:text-ink-400 hover:text-amber-600 dark:hover:text-amber-300 hover:border-amber-500/40 hover:bg-slate-100 dark:hover:bg-ink-850/80 shadow-ios-sm'
       }`}
       title={isPlaying ? 'Realm Music Playing (Tap to Pause)' : 'Play Realm Music (Tap to Start)'}
       aria-label="Toggle Background Music"
