@@ -6,9 +6,9 @@
 
 ## 🚀 Live Demo & Repo Links
 
-- **Live App**: [https://life-rpgs.pages.dev](https://life-rpgs.pages.dev)
-- **GitHub Repository**: [https://github.com/Krish1216-web/Life-RPGS](https://github.com/Krish1216-web/Life-RPGS)
-- **Walkthrough Video**: [Watch Demo Video](https://github.com/Krish1216-web/Life-RPGS/blob/main/demo-video.mp4) *(90–180 seconds demo recording)*
+- **Live App**: [xpwin](https://XPWIN.pages.dev)
+- **GitHub Repository**: [https://github.com/Krish1216-web/Life-RPGS](https://github.com/KRISHKUMAR1087/Life-RPGS)
+
 
 ---
 
