@@ -304,6 +304,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (error) return { error: error.message };
       if (!data.user) return { error: 'Sign up failed. Please try again.' };
+      if (!data.session) {
+        return { error: 'Success! Please check your email to verify your account.' };
+      }
+
+      setSession(data.session);
+      setUser(data.user);
+      await loadProfile(data.user.id);
       return { error: null };
     } catch (err) {
       // Fallback to local mode
@@ -340,8 +347,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return { error: error.message };
+      
+      if (data.session && data.user) {
+        setSession(data.session);
+        setUser(data.user);
+        await loadProfile(data.user.id);
+      } else {
+        return { error: 'Login failed. No session returned.' };
+      }
+
       return { error: null };
     } catch (err) {
       loginDemo(cleanUsername);
