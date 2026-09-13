@@ -23,6 +23,30 @@ export async function evaluateQuestAI(
   const cleanDescription = description.trim().slice(0, 75);
   const cleanTitle = title.trim();
 
+  // If in browser, invoke our Next.js edge API route to keep GEMINI_API_KEY secure on server
+  if (typeof window !== 'undefined') {
+    try {
+      const res = await fetch('/api/ai-evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: cleanTitle,
+          category,
+          description: cleanDescription,
+        }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (json && typeof json.xp === 'number') {
+          return json as AIEvaluationResult;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed calling /api/ai-evaluate from client, trying fallback...', e);
+    }
+  }
+
   try {
     const prompt = `You are the LifeQuest RPG AI Dungeon Master. 
 Evaluate this quest created by the hero and output strictly valid JSON with no markdown backticks or commentary.
@@ -33,7 +57,7 @@ Description (max 75 chars): "${cleanDescription}"
 
 Assign appropriate game rewards based on physical/mental effort and consistency:
 - xp: integer from 15 to 130
-- gold: integer from 5 to 55
+- gold: calculate exactly as floor(xp / 50) with a minimum of 1 (1 gold per 50 XP crossed)
 - difficulty: one of ["easy", "medium", "hard", "epic"]
 - attribute: one of ["strength", "intellect", "vitality", "charisma", "dexterity"] matching the primary nature of the task
 - badge: a creative 2-3 word RPG title/badge for this feat (e.g. "Iron Will", "Mind Master", "Endurance King")
@@ -41,9 +65,9 @@ Assign appropriate game rewards based on physical/mental effort and consistency:
 
 Output JSON schema:
 {
-  "xp": 35,
-  "gold": 15,
-  "difficulty": "medium",
+  "xp": 50,
+  "gold": 1,
+  "difficulty": "easy",
   "attribute": "strength",
   "badge": "Morning Warrior",
   "rationale": "Solid morning momentum builder."
@@ -79,9 +103,13 @@ Output JSON schema:
     if (!candidate) throw new Error('No candidate content from Gemini');
 
     const parsed: AIEvaluationResult = JSON.parse(candidate.trim());
+    const finalXp = Number(parsed.xp) || 30;
+    // 1 gold per 50 XP crossed
+    const calculatedGold = Math.max(1, Math.floor(finalXp / 50));
+
     return {
-      xp: Number(parsed.xp) || 30,
-      gold: Number(parsed.gold) || 15,
+      xp: finalXp,
+      gold: calculatedGold,
       difficulty: (['easy', 'medium', 'hard', 'epic'].includes(parsed.difficulty)
         ? parsed.difficulty
         : 'medium') as 'easy' | 'medium' | 'hard' | 'epic',
@@ -98,18 +126,17 @@ Output JSON schema:
     // Intelligent heuristic fallback
     const textLen = (cleanTitle + ' ' + cleanDescription).length;
     let difficulty: 'easy' | 'medium' | 'hard' | 'epic' = 'medium';
-    let xp = 35;
-    let gold = 15;
+    let xp = 50;
 
     if (textLen < 20) {
       difficulty = 'easy';
-      xp = 20;
-      gold = 10;
+      xp = 35;
     } else if (textLen > 60 || /marathon|intense|master|build|exam|heavy/i.test(cleanTitle)) {
       difficulty = 'hard';
-      xp = 60;
-      gold = 25;
+      xp = 100;
     }
+
+    const gold = Math.max(1, Math.floor(xp / 50));
 
     return {
       xp,

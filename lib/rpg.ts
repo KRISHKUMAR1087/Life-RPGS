@@ -284,7 +284,7 @@ export const DIFFICULTIES: DifficultyConfig[] = [
     key: 'easy',
     label: 'Easy',
     xp: 50,
-    gold: 10,
+    gold: 1, // 50 XP = 1 Gold (1 gold per 50 XP)
     color: 'text-emerald2-400',
     border: 'border-emerald2-500/50',
     badge: 'bg-emerald2-500/15 text-emerald2-400 border-emerald2-500/30',
@@ -292,8 +292,8 @@ export const DIFFICULTIES: DifficultyConfig[] = [
   {
     key: 'medium',
     label: 'Medium',
-    xp: 120,
-    gold: 25,
+    xp: 100,
+    gold: 2, // 100 XP = 2 Gold
     color: 'text-azure-400',
     border: 'border-azure-500/50',
     badge: 'bg-azure-500/15 text-azure-400 border-azure-500/30',
@@ -302,7 +302,7 @@ export const DIFFICULTIES: DifficultyConfig[] = [
     key: 'hard',
     label: 'Hard',
     xp: 250,
-    gold: 50,
+    gold: 5, // 250 XP = 5 Gold
     color: 'text-flame-400',
     border: 'border-flame-500/50',
     badge: 'bg-flame-500/15 text-flame-400 border-flame-500/30',
@@ -311,7 +311,7 @@ export const DIFFICULTIES: DifficultyConfig[] = [
     key: 'epic',
     label: 'Epic',
     xp: 500,
-    gold: 100,
+    gold: 10, // 500 XP = 10 Gold
     color: 'text-violet2-400',
     border: 'border-violet2-500/50',
     badge: 'bg-violet2-500/15 text-violet2-400 border-violet2-500/30',
@@ -385,8 +385,15 @@ export function getDifficulty(key: string): DifficultyConfig {
 }
 
 // XP required to advance from `level` to `level + 1`
+// Level 1: 100 XP, Level 2: 115 XP, Level 3: 130 XP (+15 XP per level)
 export function xpForLevel(level: number): number {
-  return Math.floor(100 * Math.pow(level, 1.5));
+  const safeLevel = Math.max(1, Math.floor(level));
+  return 100 + (safeLevel - 1) * 15;
+}
+
+// Gold earned based on XP (1 gold per 50 XP crossed)
+export function goldForXp(xp: number): number {
+  return Math.max(1, Math.floor(xp / 50));
 }
 
 // Character rank title based on level
