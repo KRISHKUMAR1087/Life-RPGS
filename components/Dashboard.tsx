@@ -15,12 +15,10 @@ import {
   Flame,
   Sparkles,
   Zap,
-  ShieldAlert,
   TrendingUp,
   UserCog,
   Trophy,
 } from 'lucide-react';
-import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import {
   supabase,
@@ -719,7 +717,7 @@ export default function Dashboard() {
           </div>
 
           {/* Desktop Navigation Menu Bar */}
-          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1 bg-ink-900/90 border border-white/10 p-1 rounded-2xl shadow-inner backdrop-blur-2xl whitespace-nowrap">
+          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-0.5 xl:gap-1 bg-ink-900/90 border border-white/10 p-1 rounded-2xl shadow-inner backdrop-blur-2xl whitespace-nowrap">
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -732,7 +730,7 @@ export default function Dashboard() {
                     setActiveTab(item.id);
                   }}
                   aria-current={isActive ? 'page' : undefined}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap shrink-0 ${
+                  className={`px-2.5 xl:px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all duration-200 whitespace-nowrap shrink-0 ${
                     isActive
                       ? 'bg-amber-500 text-ink-950 font-black shadow-[0_0_15px_rgba(245,158,11,0.35)]'
                       : 'text-ink-400 hover:text-ink-100 hover:bg-white/5'
@@ -745,20 +743,11 @@ export default function Dashboard() {
             })}
           </nav>
 
-          {/* Controls, Music Player, Theme, Admin, Logout */}
+          {/* Controls: Music Player, Theme, Logout */}
           <div className="flex items-center gap-2 sm:gap-2.5 flex-shrink-0">
             <MusicPlayer />
 
             <ThemeToggle />
-
-            <Link
-              href="/admin"
-              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm hover:border-amber-500/40 hover:text-amber-300"
-              title="Admin Command Center (Realm Master)"
-            >
-              <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden xl:inline font-bold">Admin</span>
-            </Link>
 
             <button
               type="button"
@@ -766,11 +755,12 @@ export default function Dashboard() {
                 soundManager.playClick();
                 signOut();
               }}
-              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 rounded-2xl shadow-ios-sm text-ink-400 hover:text-flame-400"
-              aria-label="Sign out"
-              title="Sign out"
+              className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 !rounded-2xl shadow-ios-sm text-ink-300 hover:text-flame-400 hover:border-flame-500/40 hover:bg-flame-500/10 transition-all cursor-pointer shrink-0 font-bold"
+              aria-label="Log out"
+              title="Log out of LifeQuest"
             >
-              <LogOut className="w-4 h-4 text-flame-500" />
+              <LogOut className="w-3.5 h-3.5 text-flame-400 shrink-0" />
+              <span>Logout</span>
             </button>
 
             {/* Mobile Menu Toggle Button */}
@@ -820,14 +810,18 @@ export default function Dashboard() {
                 );
               })}
 
-              <Link
-                href="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all text-amber-300 bg-amber-500/10 border border-amber-500/25"
+              <button
+                type="button"
+                onClick={() => {
+                  soundManager.playClick();
+                  setMobileMenuOpen(false);
+                  signOut();
+                }}
+                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all text-flame-400 hover:text-flame-300 bg-flame-500/10 border border-flame-500/25 cursor-pointer"
               >
-                <ShieldAlert className="w-4 h-4 text-amber-400" />
-                <span>Admin Command Center</span>
-              </Link>
+                <LogOut className="w-4 h-4 text-flame-400" />
+                <span>Logout</span>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
