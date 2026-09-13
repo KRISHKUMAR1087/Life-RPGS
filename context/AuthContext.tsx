@@ -19,6 +19,7 @@ type AuthContextType = {
   isDemo: boolean;
   signUp: (email: string, password: string, username: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   loginDemo: (heroName?: string) => void;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -311,6 +312,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function signInWithGoogle() {
+    if (isPlaceholderSupabase()) {
+      loginDemo('Hero');
+      return { error: null };
+    }
+
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined,
+        },
+      });
+      if (error) return { error: error.message };
+      return { error: null };
+    } catch (err) {
+      return { error: err instanceof Error ? err.message : 'Google authentication failed' };
+    }
+  }
+
   async function signIn(email: string, password: string) {
     const cleanUsername = formatUsername(email);
     if (isPlaceholderSupabase()) {
@@ -504,6 +525,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isDemo,
         signUp,
         signIn,
+        signInWithGoogle,
         loginDemo,
         signOut,
         refreshProfile,

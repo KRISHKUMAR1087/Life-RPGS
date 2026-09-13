@@ -209,18 +209,36 @@ export default function QuestBoard({
     soundManager.playSaveSound();
 
     try {
+      // If AI evaluation hasn't been run yet, automatically evaluate with Gemini API
+      let evaluation = aiEvaluation;
+      if (!evaluation) {
+        try {
+          evaluation = await evaluateQuestAI(
+            title.trim(),
+            category,
+            description.trim().slice(0, 75)
+          );
+        } catch {
+          // fallback handled in evaluateQuestAI
+        }
+      }
+
+      const allocatedXp = evaluation?.xp || getDifficulty(difficulty).xp;
+      const allocatedGold = evaluation?.gold || getDifficulty(difficulty).gold;
+      const allocatedDifficulty = evaluation?.difficulty || difficulty;
+
       if (editingQuest && onEdit) {
         await onEdit({
           ...editingQuest,
           title: title.trim(),
           description: description.trim().slice(0, 75) || null,
           category,
-          difficulty,
+          difficulty: allocatedDifficulty,
           frequency,
-          ai_badge: aiEvaluation?.badge || editingQuest.ai_badge,
-          ai_rationale: aiEvaluation?.rationale || editingQuest.ai_rationale,
-          xp_reward: aiEvaluation?.xp || editingQuest.xp_reward,
-          gold_reward: aiEvaluation?.gold || editingQuest.gold_reward,
+          ai_badge: evaluation?.badge || editingQuest.ai_badge,
+          ai_rationale: evaluation?.rationale || editingQuest.ai_rationale,
+          xp_reward: allocatedXp,
+          gold_reward: allocatedGold,
         });
         setEditingQuest(null);
       } else {
@@ -228,12 +246,12 @@ export default function QuestBoard({
           title: title.trim(),
           description: description.trim().slice(0, 75),
           category,
-          difficulty,
+          difficulty: allocatedDifficulty,
           frequency,
-          ai_badge: aiEvaluation?.badge,
-          ai_rationale: aiEvaluation?.rationale,
-          xp_reward: aiEvaluation?.xp,
-          gold_reward: aiEvaluation?.gold,
+          ai_badge: evaluation?.badge || 'Hero Task',
+          ai_rationale: evaluation?.rationale || 'AI calculated reward based on effort.',
+          xp_reward: allocatedXp,
+          gold_reward: allocatedGold,
         });
       }
       setTitle('');

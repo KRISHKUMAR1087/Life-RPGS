@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 
 export const runtime = 'edge';
 
@@ -29,10 +28,19 @@ export async function POST(req: Request) {
 
     const timestamp = Date.now();
     const payload = `${cleanEmail}:${timestamp}`;
-    const signature = crypto
-      .createHmac("sha256", serverAdminPass)
-      .update(payload)
-      .digest("hex");
+
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(serverAdminPass),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+    const signature = Array.from(new Uint8Array(signatureBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
 
     const token = `${payload}:${signature}`;
 

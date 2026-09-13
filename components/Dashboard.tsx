@@ -20,6 +20,7 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useAdminAuth } from '@/context/AdminAuthContext';
 import {
   supabase,
   type Profile,
@@ -75,6 +76,7 @@ type TabType = 'dashboard' | 'quests' | 'progress' | 'boss' | 'character' | 'sho
 
 export default function Dashboard() {
   const { profile, user, isDemo, signOut, refreshProfile, updateProfileBio } = useAuth();
+  const { isAdminAuthenticated } = useAdminAuth();
   const isOnline = useOnlineStatus();
   const isDemoMode = isDemo || user?.id === 'demo-hero';
 
@@ -776,53 +778,76 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Mobile Navigation Drawer */}
+        {/* Floating iOS-Style Centered Mobile Navigation Popover */}
         <AnimatePresence>
           {mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-t border-white/10 bg-ink-900/95 backdrop-blur-2xl px-4 py-3 space-y-1"
+            <div
+              className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-start justify-center pt-20 px-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setMobileMenuOpen(false);
+              }}
             >
-              {NAV_ITEMS.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      soundManager.playClick();
-                      setActiveTab(item.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    aria-current={isActive ? 'page' : undefined}
-                    className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${
-                      isActive
-                        ? 'bg-amber-500 text-ink-950 font-black shadow-ios-sm'
-                        : 'text-ink-400 hover:text-ink-200'
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.label}</span>
-                  </button>
-                );
-              })}
-
-              <button
-                type="button"
-                onClick={() => {
-                  soundManager.playClick();
-                  setMobileMenuOpen(false);
-                  signOut();
-                }}
-                className="w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all text-flame-400 hover:text-flame-300 bg-flame-500/10 border border-flame-500/25 cursor-pointer"
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: -20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -20 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="w-full max-w-sm ios-glass p-4 rounded-3xl border border-white/20 dark:border-white/10 shadow-ios-lg space-y-1.5 bg-ink-900/95"
               >
-                <LogOut className="w-4 h-4 text-flame-400" />
-                <span>Logout</span>
-              </button>
-            </motion.div>
+                <div className="flex items-center justify-between px-3 py-1 mb-1 border-b border-white/10 pb-2">
+                  <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider">Realm Navigation</span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-ink-400 hover:text-ink-200 p-1 focus-ring rounded-lg"
+                    aria-label="Close menu"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        soundManager.playClick();
+                        setActiveTab(item.id);
+                        setMobileMenuOpen(false);
+                      }}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`w-full px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center justify-between transition-all ${
+                        isActive
+                          ? 'bg-amber-500 text-ink-950 font-black shadow-ios-md'
+                          : 'text-ink-300 hover:text-ink-100 hover:bg-white/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className="w-4 h-4" />
+                        <span>{item.label}</span>
+                      </div>
+                      {isActive && <Sparkles className="w-4 h-4 fill-current" />}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    soundManager.playClick();
+                    setMobileMenuOpen(false);
+                    signOut();
+                  }}
+                  className="w-full px-4 py-3 rounded-2xl text-xs sm:text-sm font-bold flex items-center gap-3 transition-all text-flame-400 hover:text-flame-300 bg-flame-500/10 border border-flame-500/25 cursor-pointer mt-2"
+                >
+                  <LogOut className="w-4 h-4 text-flame-400" />
+                  <span>Logout</span>
+                </button>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </header>
