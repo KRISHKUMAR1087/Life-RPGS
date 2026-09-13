@@ -38,6 +38,8 @@ import {
   type CategoryConfig,
   type CategoryKey,
   type DifficultyKey,
+  TAVERN_BOUNTIES,
+  getDifficulty,
 } from '@/lib/rpg';
 import {
   SEED_SHOP_ITEMS,
@@ -363,6 +365,7 @@ export default function Dashboard() {
       }
 
       const { error } = await supabase.from('quests').insert({
+        user_id: user?.id,
         title: data.title,
         description: data.description || null,
         category: data.category,
@@ -371,16 +374,20 @@ export default function Dashboard() {
         quest_date: getISTDateString(),
         ai_badge: data.ai_badge,
         ai_rationale: data.ai_rationale,
-        xp_reward: data.xp_reward,
-        gold_reward: data.gold_reward,
+        xp_reward: data.xp_reward || getDifficulty(data.difficulty).xp,
+        gold_reward: data.gold_reward || getDifficulty(data.difficulty).gold,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase insert error:", error);
+        throw new Error(`DB Error: ${error.message}`);
+      }
+      
       await loadQuests();
       showToast('Quest accepted!', 'success');
     } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Failed to create quest.', 'error');
-      throw err;
+      console.error(err);
+      showToast(err instanceof Error ? err.message : 'Failed to create quest', 'error');
     } finally {
       setInFlightAction((prev) => {
         const next = new Set(prev);
