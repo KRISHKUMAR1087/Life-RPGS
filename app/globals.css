@@ -49,9 +49,16 @@
     font-weight: 700;
   }
   *:focus-visible {
-    outline: 2px solid #007aff;
+    outline: 2px solid #f59e0b;
     outline-offset: 2px;
     border-radius: 8px;
+  }
+  select {
+    color-scheme: dark;
+  }
+  select, option {
+    background-color: #121216 !important;
+    color: #f4f4f5 !important;
   }
   ::-webkit-scrollbar {
     width: 6px;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Coins,
   Flame,
@@ -17,7 +17,6 @@ import {
   Edit2,
   Save,
   Award,
-  Swords,
   Layers,
 } from 'lucide-react';
 import type { Profile, InventoryItem } from '@/lib/supabase';
@@ -173,11 +172,11 @@ export default function CharacterPanel({
 
           {/* Quick Lifetime Summary Chips */}
           <div className="flex sm:flex-col items-center sm:items-end gap-2 text-xs font-semibold text-ink-300">
-            <div className="flex items-center gap-1.5 bg-ink-850/80 px-3 py-1.5 rounded-xl border border-white/10">
+            <div className="flex items-center gap-1.5 bg-ink-850/80 px-3.5 py-1.5 rounded-xl border border-white/10">
               <Star className="w-4 h-4 text-amber-400" />
               <span>{profile.total_xp.toLocaleString()} Total XP</span>
             </div>
-            <div className="flex items-center gap-1.5 bg-ink-850/80 px-3 py-1.5 rounded-xl border border-white/10">
+            <div className="flex items-center gap-1.5 bg-ink-850/80 px-3.5 py-1.5 rounded-xl border border-white/10">
               <Coins className="w-4 h-4 text-amber-400" />
               <span>{profile.gold.toLocaleString()} Gold</span>
             </div>
@@ -269,9 +268,9 @@ export default function CharacterPanel({
       </div>
 
       {/* Attribute Matrix & Radar Visualizer */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Radar Visualizer */}
-        <div className="lg:col-span-6 glass-card p-6 rounded-3xl border border-white/10 flex flex-col justify-between">
+        <div className="glass-card p-6 rounded-3xl border border-white/10 flex flex-col justify-between">
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="text-sm font-bold text-ink-100 flex items-center gap-2">
@@ -285,7 +284,7 @@ export default function CharacterPanel({
               <button
                 type="button"
                 onClick={() => setViewMode('radar')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                   viewMode === 'radar'
                     ? 'bg-amber-500 text-ink-950 shadow-ios-sm'
                     : 'text-ink-400 hover:text-ink-200'
@@ -296,7 +295,7 @@ export default function CharacterPanel({
               <button
                 type="button"
                 onClick={() => setViewMode('bars')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
                   viewMode === 'bars'
                     ? 'bg-amber-500 text-ink-950 shadow-ios-sm'
                     : 'text-ink-400 hover:text-ink-200'
@@ -308,7 +307,7 @@ export default function CharacterPanel({
           </div>
 
           {viewMode === 'radar' ? (
-            <div className="flex flex-col items-center justify-center py-4">
+            <div className="flex flex-col items-center justify-center py-2">
               <StatRadarChart
                 stats={{
                   strength: profile.strength,
@@ -317,9 +316,9 @@ export default function CharacterPanel({
                   charisma: profile.charisma,
                   dexterity: profile.dexterity,
                 }}
-                size={270}
+                size={260}
               />
-              <span className="text-[11px] text-ink-400 font-mono mt-2">
+              <span className="text-xs text-ink-400 font-mono mt-3">
                 Total Stat Points: <strong className="text-amber-400">{totalAttributePoints}</strong>
               </span>
             </div>
@@ -357,7 +356,7 @@ export default function CharacterPanel({
         </div>
 
         {/* Right: Prestige Road & Rank Hierarchy */}
-        <div className="lg:col-span-6 glass-card p-6 rounded-3xl border border-white/10 flex flex-col justify-between">
+        <div className="glass-card p-6 rounded-3xl border border-white/10 flex flex-col justify-between">
           <div>
             <h3 className="text-sm font-bold text-ink-100 flex items-center gap-2 mb-1">
               <Trophy className="w-4 h-4 text-amber-400" />
@@ -375,7 +374,7 @@ export default function CharacterPanel({
                 return (
                   <div
                     key={idx}
-                    className={`p-3 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
+                    className={`p-3.5 rounded-2xl border transition-all flex items-center justify-between gap-3 ${
                       isCurrent
                         ? 'bg-amber-500/15 border-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.25)]'
                         : isUnlocked
@@ -383,26 +382,26 @@ export default function CharacterPanel({
                         : 'bg-ink-950/40 border-white/5 opacity-50'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{tier.icon}</span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h4 className="text-xs font-bold text-ink-100">{tier.title}</h4>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-ink-900 border border-white/10 font-bold text-amber-300">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-2xl flex-shrink-0">{tier.icon}</span>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-xs font-bold text-ink-100 truncate">{tier.title}</h4>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-ink-900 border border-white/10 font-bold text-amber-300 flex-shrink-0">
                             LVL {tier.level}
                           </span>
                         </div>
-                        <p className="text-[10px] text-ink-400 font-normal">{tier.perk}</p>
+                        <p className="text-[11px] text-ink-400 font-normal truncate">{tier.perk}</p>
                       </div>
                     </div>
 
-                    <div>
+                    <div className="flex-shrink-0 ml-2">
                       {isCurrent ? (
-                        <span className="text-[10px] font-extrabold px-2.5 py-1 rounded-full bg-amber-500 text-ink-950">
+                        <span className="text-[10px] font-black px-3 py-1 rounded-full bg-amber-500 text-ink-950 whitespace-nowrap shadow-ios-sm">
                           Active Rank
                         </span>
                       ) : isUnlocked ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald2-400" />
+                        <CheckCircle2 className="w-5 h-5 text-emerald2-400" />
                       ) : (
                         <span className="text-[10px] text-ink-500 font-mono">Locked</span>
                       )}

@@ -17,6 +17,7 @@ import {
   BookmarkPlus,
   Zap,
   Bot,
+  ChevronDown,
 } from 'lucide-react';
 import type { Quest } from '@/lib/supabase';
 import {
@@ -546,34 +547,40 @@ export default function QuestBoard({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-ink-300">Attribute Category</label>
-                  <select
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value as CategoryKey)}
-                    className="input-field text-sm"
-                    disabled={submitting}
-                  >
-                    {allCategories.map((c) => (
-                      <option key={c.key} value={c.key}>
-                        {c.label} ({c.description})
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value as CategoryKey)}
+                      className="input-field text-sm appearance-none pr-8 cursor-pointer bg-ink-900 border-white/15"
+                      disabled={submitting}
+                    >
+                      {allCategories.map((c) => (
+                        <option key={c.key} value={c.key}>
+                          {c.label} ({c.description})
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-ink-300">Difficulty Tier</label>
-                  <select
-                    value={difficulty}
-                    onChange={(e) => setDifficulty(e.target.value as DifficultyKey)}
-                    className="input-field text-sm"
-                    disabled={submitting}
-                  >
-                    {DIFFICULTIES.map((d) => (
-                      <option key={d.key} value={d.key}>
-                        {d.label} — +{d.xp} XP / +{d.gold} Gold
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={difficulty}
+                      onChange={(e) => setDifficulty(e.target.value as DifficultyKey)}
+                      className="input-field text-sm appearance-none pr-8 cursor-pointer bg-ink-900 border-white/15"
+                      disabled={submitting}
+                    >
+                      {DIFFICULTIES.map((d) => (
+                        <option key={d.key} value={d.key}>
+                          {d.label} — +{d.xp} XP / +{d.gold} Gold
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="w-4 h-4 text-ink-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
@@ -638,49 +645,65 @@ export default function QuestBoard({
         </div>
 
         {/* Category & Tier Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/10 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2.5 border-t border-white/10 text-xs">
           <div className="flex flex-wrap items-center gap-2">
-            <SlidersHorizontal className="w-3.5 h-3.5 text-ink-400 mr-0.5" />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="bg-ink-850/80 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-ink-200 focus:outline-none focus:border-amber-400"
-            >
-              <option value="all">All Categories</option>
-              {allCategories.map((c) => (
-                <option key={c.key} value={c.key}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1.5 text-ink-400 mr-1 font-semibold text-[11px]">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
+              <span>Filters:</span>
+            </div>
 
-            <select
-              value={difficultyFilter}
-              onChange={(e) => setDifficultyFilter(e.target.value)}
-              className="bg-ink-850/80 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-ink-200 focus:outline-none focus:border-amber-400"
-            >
-              <option value="all">All Tiers</option>
-              {DIFFICULTIES.map((d) => (
-                <option key={d.key} value={d.key}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
+            {/* Category Select */}
+            <div className="relative inline-flex items-center">
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="appearance-none bg-ink-900 border border-white/15 hover:border-amber-400/50 rounded-xl pl-3 pr-7 py-1.5 text-xs text-ink-100 focus:outline-none focus:border-amber-400 cursor-pointer shadow-ios-sm transition-all"
+              >
+                <option value="all">All Categories</option>
+                {allCategories.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3 h-3 text-ink-400 absolute right-2.5 pointer-events-none" />
+            </div>
+
+            {/* Difficulty Tier Select */}
+            <div className="relative inline-flex items-center">
+              <select
+                value={difficultyFilter}
+                onChange={(e) => setDifficultyFilter(e.target.value)}
+                className="appearance-none bg-ink-900 border border-white/15 hover:border-amber-400/50 rounded-xl pl-3 pr-7 py-1.5 text-xs text-ink-100 focus:outline-none focus:border-amber-400 cursor-pointer shadow-ios-sm transition-all"
+              >
+                <option value="all">All Tiers</option>
+                {DIFFICULTIES.map((d) => (
+                  <option key={d.key} value={d.key}>
+                    {d.label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-3 h-3 text-ink-400 absolute right-2.5 pointer-events-none" />
+            </div>
           </div>
 
+          {/* Sort Order Select */}
           <div className="flex items-center gap-1.5">
-            <ArrowUpDown className="w-3.5 h-3.5 text-ink-400" />
-            <select
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
-              className="bg-ink-850/80 border border-white/10 rounded-lg px-2.5 py-1 text-xs text-ink-200 focus:outline-none focus:border-amber-400"
-            >
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-              <option value="xp_desc">XP (High to Low)</option>
-              <option value="xp_asc">XP (Low to High)</option>
-              <option value="title_asc">Title (A-Z)</option>
-            </select>
+            <ArrowUpDown className="w-3.5 h-3.5 text-amber-400" />
+            <div className="relative inline-flex items-center">
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}
+                className="appearance-none bg-ink-900 border border-white/15 hover:border-amber-400/50 rounded-xl pl-3 pr-7 py-1.5 text-xs text-ink-100 focus:outline-none focus:border-amber-400 cursor-pointer shadow-ios-sm transition-all"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="xp_desc">XP (High to Low)</option>
+                <option value="xp_asc">XP (Low to High)</option>
+                <option value="title_asc">Title (A-Z)</option>
+              </select>
+              <ChevronDown className="w-3 h-3 text-ink-400 absolute right-2.5 pointer-events-none" />
+            </div>
           </div>
         </div>
       </div>

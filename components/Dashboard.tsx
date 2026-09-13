@@ -53,6 +53,7 @@ import {
 
 import { soundManager } from '@/lib/audio';
 import CharacterPanel from '@/components/CharacterPanel';
+import HeroOverviewCard from '@/components/HeroOverviewCard';
 import QuestBoard from '@/components/QuestBoard';
 import Shop from '@/components/Shop';
 import CategoryManager from '@/components/CategoryManager';
@@ -548,28 +549,28 @@ export default function Dashboard() {
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[700px] h-[400px] bg-amber-500/5 rounded-full blur-[140px] pointer-events-none" />
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 ios-glass border-b border-ink-800/80 shadow-ios-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-3.5 flex items-center justify-between min-h-[68px]">
+      <header className="sticky top-0 z-40 ios-glass border-b border-white/10 shadow-ios-sm backdrop-blur-2xl">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between min-h-[64px] gap-4">
           {/* Logo Brand */}
           <div
-            className="flex items-center gap-3 cursor-pointer select-none"
+            className="flex items-center gap-3 cursor-pointer select-none py-0.5 flex-shrink-0"
             onClick={() => setActiveTab('dashboard')}
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-ios-sm">
-              <Swords className="w-5 h-5 text-white" strokeWidth={2.2} />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)] flex-shrink-0">
+              <Swords className="w-5 h-5 text-ink-950" strokeWidth={2.4} />
             </div>
-            <div>
+            <div className="flex flex-col justify-center">
               <div className="flex items-center gap-2">
-                <h1 className="font-heading text-base sm:text-lg font-extrabold text-ink-200 leading-none tracking-tight">
+                <h1 className="font-heading text-lg font-black text-ink-100 leading-none tracking-tight">
                   LifeQuest
                 </h1>
                 {isDemoMode && (
-                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 whitespace-nowrap">
                     LOCAL HERO
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-ink-400 mt-1 hidden sm:block font-medium">
+              <p className="text-[11px] text-ink-400 font-medium leading-normal mt-0.5 hidden sm:block">
                 Gamified RPG Productivity System
               </p>
             </div>
@@ -602,8 +603,8 @@ export default function Dashboard() {
           </nav>
 
           {/* Controls, Music Player, Theme, Admin, Logout */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            <MusicPlayer onToast={showToast} />
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <MusicPlayer />
 
             <ThemeToggle />
 
@@ -641,7 +642,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-
         {/* Mobile Navigation Drawer */}
         <AnimatePresence>
           {mobileMenuOpen && (
@@ -649,7 +649,7 @@ export default function Dashboard() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="lg:hidden border-t border-ink-800 bg-ink-900 px-4 py-3 space-y-1"
+              className="lg:hidden border-t border-white/10 bg-ink-900/95 backdrop-blur-2xl px-4 py-3 space-y-1"
             >
               {NAV_ITEMS.map((item) => {
                 const Icon = item.icon;
@@ -665,7 +665,7 @@ export default function Dashboard() {
                     }}
                     className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold flex items-center gap-3 transition-all ${
                       isActive
-                        ? 'bg-ink-800 text-amber-400 border border-amber-500/30'
+                        ? 'bg-amber-500 text-ink-950 font-black shadow-ios-sm'
                         : 'text-ink-400 hover:text-ink-200'
                     }`}
                   >
@@ -694,9 +694,13 @@ export default function Dashboard() {
           <div className="space-y-6">
             {/* Top Overview Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-6">
-              {/* Sidebar: Character Panel */}
-              <div className="space-y-6">
-                <CharacterPanel profile={currentProfile} inventory={inventory} />
+              {/* Sidebar: Hero Overview Card & Daily Boss */}
+              <div className="space-y-5">
+                <HeroOverviewCard
+                  profile={currentProfile}
+                  inventory={inventory}
+                  onOpenHeroSheet={() => setActiveTab('character')}
+                />
 
                 {/* Boss Battle Glance Card */}
                 <div
@@ -704,16 +708,16 @@ export default function Dashboard() {
                     soundManager.playClick();
                     setActiveTab('boss');
                   }}
-                  className="rpg-card p-5 border border-flame-500/30 bg-gradient-to-br from-flame-500/10 via-ink-900 to-ink-950 rounded-3xl cursor-pointer hover:border-flame-500/50 transition-all shadow-ios-md group"
+                  className="glass-card p-5 border border-flame-500/30 bg-gradient-to-br from-flame-500/10 via-ink-900 to-ink-950 rounded-3xl cursor-pointer hover:border-flame-500/50 transition-all shadow-ios-md group"
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-2.5">
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">🐉</span>
                       <div>
                         <h4 className="text-xs font-bold text-flame-400 uppercase tracking-wider">
                           Daily Realm Raid
                         </h4>
-                        <p className="text-sm font-bold text-ink-200 group-hover:text-amber-400 transition-colors">
+                        <p className="text-sm font-bold text-ink-100 group-hover:text-amber-400 transition-colors">
                           Malakor the Sloth Wyrm
                         </p>
                       </div>
@@ -778,8 +782,12 @@ export default function Dashboard() {
         )}
 
         {activeTab === 'character' && (
-          <div className="max-w-2xl mx-auto">
-            <CharacterPanel profile={currentProfile} inventory={inventory} />
+          <div className="max-w-5xl mx-auto">
+            <CharacterPanel
+              profile={currentProfile}
+              inventory={inventory}
+              onProfileUpdate={() => refreshProfile()}
+            />
           </div>
         )}
 
