@@ -826,10 +826,10 @@ export default function QuestBoard({
                           : 'border-ink-800/80 bg-ink-950/70 hover:border-amber-500/40'
                       }`}
                     >
-                      <div className="space-y-2 flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-1 flex-wrap">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[11px] font-bold text-amber-400">
+                      <div className="space-y-2.5 flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[11px] font-bold text-amber-400 shrink-0">
                               +{xpVal} XP • +{goldVal} G
                             </span>
                             {quest.frequency && quest.frequency !== 'one_time' && (
@@ -838,7 +838,7 @@ export default function QuestBoard({
                               </span>
                             )}
                             {quest.ai_badge && (
-                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-400/30 flex items-center gap-0.5">
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-500/15 text-purple-300 border border-purple-400/30 flex items-center gap-0.5 shrink-0">
                                 <Sparkles className="w-2.5 h-2.5" />
                                 {quest.ai_badge}
                               </span>
@@ -851,30 +851,30 @@ export default function QuestBoard({
 
                         <div>
                           <h4
-                            className={`text-xs font-bold transition-colors line-clamp-2 break-words leading-snug ${
+                            className={`text-xs font-bold transition-colors line-clamp-2 break-words ${
                               isCompleted ? 'line-through text-ink-400' : 'text-ink-200 group-hover:text-amber-400'
                             }`}
                           >
                             {quest.title}
                           </h4>
                           {quest.description && (
-                            <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 leading-relaxed break-words">{quest.description}</p>
+                            <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 break-words">{quest.description}</p>
                           )}
                           {quest.ai_rationale && (
-                            <p className="text-[10px] text-amber-300/80 italic font-mono mt-1">
+                            <p className="text-[10px] text-amber-300/80 italic font-mono mt-0.5">
                               AI: &quot;{quest.ai_rationale}&quot;
                             </p>
                           )}
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-1.5 pt-2.5 border-t border-ink-800/80 w-full">
+                      <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-ink-800/80">
                         {!isCompleted ? (
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                          <>
                             <button
                               type="button"
                               onClick={() => handleStartEdit(quest)}
-                              className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-ink-200 transition-all focus-ring shrink-0"
+                              className="p-1.5 rounded-xl bg-ink-850 border border-ink-800 text-ink-400 hover:text-ink-200 transition-all focus-ring"
                               title="Edit quest"
                               aria-label={`Edit quest "${quest.title}"`}
                             >
@@ -889,21 +889,21 @@ export default function QuestBoard({
                                 onComplete(quest);
                               }}
                               disabled={isCompleting}
-                              className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center justify-center gap-1 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring"
+                              className="px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring"
                               title="Complete Quest"
                               aria-label={`Complete quest "${quest.title}"`}
                             >
                               {isCompleting ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                               ) : (
-                                <Check className="w-3.5 h-3.5 shrink-0" />
+                                <Check className="w-3.5 h-3.5" />
                               )}
-                              <span className="truncate">Complete</span>
+                              Complete
                             </motion.button>
-                          </div>
+                          </>
                         ) : (
                           <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
-                            <Check className="w-3.5 h-3.5 shrink-0" /> Completed
+                            <Check className="w-3.5 h-3.5" /> Completed
                           </span>
                         )}
 
@@ -911,9 +911,9 @@ export default function QuestBoard({
                         <button
                           type="button"
                           onClick={() => handleInitiateDelete(quest.id)}
-                          className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center justify-center gap-1 shrink-0 ${
+                          className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center gap-1 ${
                             isDeleting
-                              ? 'bg-flame-500/20 border-flame-500/60 text-flame-400 px-2'
+                              ? 'bg-flame-500/20 border-flame-500/60 text-flame-400 px-2.5'
                               : 'bg-ink-850 border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30'
                           }`}
                           title={isDeleting ? 'Click again to confirm deletion' : 'Delete quest'}
@@ -921,8 +921,8 @@ export default function QuestBoard({
                         >
                           {isDeleting ? (
                             <>
-                              <AlertTriangle className="w-3.5 h-3.5 animate-pulse shrink-0" />
-                              <span className="text-[10px]">Confirm?</span>
+                              <AlertTriangle className="w-3.5 h-3.5 animate-pulse" />
+                              <span>Confirm?</span>
                             </>
                           ) : (
                             <Trash2 className="w-3.5 h-3.5" />
@@ -1048,19 +1048,19 @@ export default function QuestBoard({
 
                       <div>
                         <h4
-                          className={`text-xs font-bold transition-colors line-clamp-2 break-words leading-snug ${
+                          className={`text-xs font-bold transition-colors line-clamp-2 break-words ${
                             isCompleted ? 'line-through text-ink-400' : 'text-ink-200'
                           }`}
                         >
                           {quest.title}
                         </h4>
                         {quest.description && (
-                          <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 leading-relaxed break-words">{quest.description}</p>
+                          <p className="text-[11px] text-ink-400 line-clamp-2 mt-1 break-words">{quest.description}</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-1.5 pt-2.5 border-t border-ink-800/80 w-full">
+                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-ink-800/80">
                       {!isCompleted ? (
                         <button
                           type="button"
@@ -1069,20 +1069,18 @@ export default function QuestBoard({
                             onComplete(quest);
                           }}
                           disabled={completingId === quest.id}
-                          className="flex-1 min-w-0 px-2.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center justify-center gap-1 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring"
-                          title="Complete Bounty"
-                          aria-label={`Complete bounty "${quest.title}"`}
+                          className="px-3.5 py-1.5 rounded-xl bg-emerald2-500/15 border border-emerald2-500/30 text-emerald2-400 text-xs font-bold flex items-center gap-1.5 hover:bg-emerald2-500/25 transition-all disabled:opacity-50 shadow-ios-sm focus-ring"
                         >
                           {completingId === quest.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <Check className="w-3.5 h-3.5 shrink-0" />
+                            <Check className="w-3.5 h-3.5" />
                           )}
-                          <span className="truncate">Complete</span>
+                          Complete
                         </button>
                       ) : (
                         <span className="text-xs text-emerald2-400 font-semibold flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald2-500/10 border border-emerald2-500/20">
-                          <Check className="w-3.5 h-3.5 shrink-0" /> Completed
+                          <Check className="w-3.5 h-3.5" /> Completed
                         </span>
                       )}
 
@@ -1090,22 +1088,16 @@ export default function QuestBoard({
                       <button
                         type="button"
                         onClick={() => handleInitiateDelete(quest.id)}
-                        className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center justify-center gap-1 shrink-0 ${
+                        className={`p-1.5 rounded-xl border transition-all focus-ring text-xs font-bold flex items-center gap-1 ${
                           deletingId === quest.id
-                            ? 'bg-flame-500/20 border-flame-500/60 text-flame-400 px-2'
+                            ? 'bg-flame-500/20 border-flame-500/60 text-flame-400 px-2.5'
                             : 'bg-ink-850 border-ink-800 text-ink-400 hover:text-flame-400 hover:border-flame-500/30'
                         }`}
                         title={deletingId === quest.id ? 'Click again to confirm deletion' : 'Abandon bounty'}
                         aria-label={`Delete bounty "${quest.title}"`}
                       >
-                        {deletingId === quest.id ? (
-                          <>
-                            <AlertTriangle className="w-3.5 h-3.5 animate-pulse shrink-0" />
-                            <span className="text-[10px]">Confirm?</span>
-                          </>
-                        ) : (
-                          <Trash2 className="w-3.5 h-3.5" />
-                        )}
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {deletingId === quest.id && <span>Confirm?</span>}
                       </button>
                     </div>
                   </div>
