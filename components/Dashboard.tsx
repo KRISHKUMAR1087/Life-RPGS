@@ -692,27 +692,22 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between min-h-[64px] gap-3">
           {/* Logo Brand */}
           <div
-            className="flex items-center gap-3 cursor-pointer select-none py-0.5 flex-shrink-0"
+            className="flex items-center gap-2.5 cursor-pointer select-none py-0.5 flex-shrink-0"
             onClick={() => setActiveTab('dashboard')}
-            title="LifeQuest Dashboard"
+            title="XpWin Dashboard"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)] flex-shrink-0">
-              <Swords className="w-5 h-5 text-ink-950" strokeWidth={2.4} />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.35)] flex-shrink-0">
+              <Swords className="w-4 h-4 sm:w-5 sm:h-5 text-ink-950" strokeWidth={2.4} />
             </div>
-            <div className="flex flex-col justify-center">
-              <div className="flex items-center gap-2">
-                <h1 className="font-heading text-lg font-black text-ink-100 leading-none tracking-tight">
-                  LifeQuest
-                </h1>
-                {isDemoMode && (
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 whitespace-nowrap">
-                    LOCAL HERO
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] text-ink-400 font-medium leading-normal mt-0.5 hidden sm:block">
-                Gamified RPG Productivity System
-              </p>
+            <div className="flex items-center gap-2">
+              <h1 className="font-heading text-base sm:text-lg font-black text-ink-100 leading-none tracking-tight">
+                XpWin
+              </h1>
+              {isDemoMode && (
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 whitespace-nowrap">
+                  LOCAL HERO
+                </span>
+              )}
             </div>
           </div>
 
@@ -757,10 +752,10 @@ export default function Dashboard() {
               }}
               className="btn-ghost flex items-center gap-1.5 text-xs py-2 px-3 !rounded-2xl shadow-ios-sm text-ink-300 hover:text-flame-400 hover:border-flame-500/40 hover:bg-flame-500/10 transition-all cursor-pointer shrink-0 font-bold"
               aria-label="Log out"
-              title="Log out of LifeQuest"
+              title="Log out of XpWin"
             >
               <LogOut className="w-3.5 h-3.5 text-flame-400 shrink-0" />
-              <span>Logout</span>
+              <span className="hidden sm:inline">Logout</span>
             </button>
 
             {/* Mobile Menu Toggle Button */}

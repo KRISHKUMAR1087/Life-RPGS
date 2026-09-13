@@ -7,6 +7,7 @@ class SoundManager {
   private bgmPlaying: boolean = false;
   private bgmVolume: number = 0.35;
   private onBgmChangeCallbacks: Set<(isPlaying: boolean) => void> = new Set();
+  private onMuteChangeCallbacks: Set<(isMuted: boolean) => void> = new Set();
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -112,6 +113,18 @@ class SoundManager {
     return this.muted;
   }
 
+  public subscribeMute(callback: (isMuted: boolean) => void): () => void {
+    this.onMuteChangeCallbacks.add(callback);
+    callback(this.muted);
+    return () => {
+      this.onMuteChangeCallbacks.delete(callback);
+    };
+  }
+
+  private notifyMuteChange(): void {
+    this.onMuteChangeCallbacks.forEach((cb) => cb(this.muted));
+  }
+
   public setMuted(muted: boolean): void {
     this.muted = muted;
     if (this.bgmAudio) {
@@ -120,6 +133,7 @@ class SoundManager {
     if (typeof window !== 'undefined') {
       localStorage.setItem('life_rpg_muted', String(muted));
     }
+    this.notifyMuteChange();
   }
 
   public toggleMute(): boolean {

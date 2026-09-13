@@ -203,10 +203,9 @@ export default function LandingPage({ onGetStarted, onSignIn, onDemoPlay }: Land
               <Sword className="w-5 h-5 text-ink-950" strokeWidth={2.5} />
             </div>
             <div>
-              <span className="font-heading text-lg font-extrabold tracking-tight text-ink-100 flex items-center gap-1.5">
+              <span className="font-heading text-base sm:text-lg font-extrabold tracking-tight text-ink-100 flex items-center gap-1.5">
                 XpWin <span className="text-amber-400 text-xs px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 font-semibold">RPG</span>
               </span>
-              <p className="text-[10px] text-ink-400 font-medium -mt-0.5">Real Life Gamification System</p>
             </div>
           </div>
 
