@@ -20,7 +20,6 @@ import {
   Trophy,
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useAdminAuth } from '@/context/AdminAuthContext';
 import {
   supabase,
   type Profile,
@@ -76,7 +75,6 @@ type TabType = 'dashboard' | 'quests' | 'progress' | 'boss' | 'character' | 'sho
 
 export default function Dashboard() {
   const { profile, user, isDemo, signOut, refreshProfile, updateProfileBio } = useAuth();
-  const { isAdminAuthenticated } = useAdminAuth();
   const isOnline = useOnlineStatus();
   const isDemoMode = isDemo || user?.id === 'demo-hero';
 
